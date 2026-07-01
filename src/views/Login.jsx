@@ -700,7 +700,7 @@ const Login = ({ onLogin }) => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      openExternalLink('https://github.com/Sashwat-K/persona-based-contract-generator#multi-persona-workflow');
+                      openExternalLink('https://github.com/ibm-hyper-protect/contract-api#multi-persona-workflow');
                     }}
                     className="login-inline-link"
                   >
@@ -722,7 +722,7 @@ const Login = ({ onLogin }) => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      openExternalLink('https://github.com/Sashwat-K/persona-based-contract-generator#cryptographic-security');
+                      openExternalLink('https://github.com/ibm-hyper-protect/contract-api#cryptographic-security');
                     }}
                     className="login-inline-link"
                   >
@@ -744,7 +744,7 @@ const Login = ({ onLogin }) => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      openExternalLink('https://github.com/Sashwat-K/persona-based-contract-generator#audit-trail');
+                      openExternalLink('https://github.com/ibm-hyper-protect/contract-api#audit-trail');
                     }}
                     className="login-inline-link"
                   >
@@ -765,7 +765,7 @@ const Login = ({ onLogin }) => {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    openExternalLink('https://github.com/Sashwat-K/persona-based-contract-generator/blob/main/README.md');
+                    openExternalLink('https://github.com/ibm-hyper-protect/contract-api/blob/main/README.md');
                   }}
                   className="login-link"
                 >
@@ -777,7 +777,7 @@ const Login = ({ onLogin }) => {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    openExternalLink('https://github.com/Sashwat-K/persona-based-contract-generator/issues');
+                    openExternalLink('https://github.com/ibm-hyper-protect/contract-api/issues');
                   }}
                   className="login-link"
                 >
@@ -789,7 +789,7 @@ const Login = ({ onLogin }) => {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    openExternalLink('https://github.com/Sashwat-K/persona-based-contract-generator');
+                    openExternalLink('https://github.com/ibm-hyper-protect/contract-api');
                   }}
                   className="login-link"
                 >
