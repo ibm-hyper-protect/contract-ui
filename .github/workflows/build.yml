@@ -288,7 +288,7 @@ jobs:
 
       - name: Upload Linux artifacts to release
         if: matrix.platform == 'linux'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release.outputs.release_tag }}
           files: |
@@ -301,7 +301,7 @@ jobs:
 
       - name: Upload Windows artifacts to release
         if: matrix.platform == 'windows'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release.outputs.release_tag }}
           files: |
@@ -312,7 +312,7 @@ jobs:
 
       - name: Upload macOS artifacts to release
         if: matrix.platform == 'macos'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release.outputs.release_tag }}
           files: |
