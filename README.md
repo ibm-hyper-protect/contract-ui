@@ -1,4 +1,4 @@
-# IBM Confidential Computing Contract UI
+# Contract UI
 
 A secure desktop application for collaborative construction of IBM Confidential Computing contracts with role-based access control, cryptographic signing, and attestation capabilities.
 
