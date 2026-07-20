@@ -51,10 +51,10 @@
     "wait-on": "^9.0.4"
   },
   "dependencies": {
-    "@carbon/charts": "^1.27.3",
-    "@carbon/charts-react": "^1.27.3",
-    "@carbon/icons-react": "^11.77.1",
-    "@carbon/react": "^1.104.1",
+    "@carbon/charts": "^1.27.16",
+    "@carbon/charts-react": "^1.27.16",
+    "@carbon/icons-react": "^11.84.0",
+    "@carbon/react": "^1.112.0",
     "axios": "^1.7.9",
     "d3": "^7.9.0",
     "react": "^19.2.4",
