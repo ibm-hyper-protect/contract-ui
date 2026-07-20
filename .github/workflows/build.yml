@@ -94,7 +94,7 @@ jobs:
           cache: 'npm'
 
       - name: Cache Node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -153,7 +153,7 @@ jobs:
           echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
 
       - name: Cache Node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -251,7 +251,7 @@ jobs:
           cache: 'npm'
 
       - name: Cache Node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
