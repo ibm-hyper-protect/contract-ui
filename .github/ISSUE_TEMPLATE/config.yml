@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/ibm-hyper-protect/contract-ui/blob/main/README.md
+    about: Read the complete application documentation and usage guides
+  - name: Security Issues
+    url: https://github.com/ibm-hyper-protect/contract-ui/security/advisories/new
+    about: Report security vulnerabilities privately (Do NOT create public issues)
+  - name: GitHub Discussions
+    url: https://github.com/ibm-hyper-protect/contract-ui/discussions
+    about: General questions, ideas, and community discussions

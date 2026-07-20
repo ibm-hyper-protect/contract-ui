@@ -1,0 +1,105 @@
+name: Question / Help
+description: Ask a question or request help using contract-ui
+title: "[Question]: "
+labels: ["question", "help wanted"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out! Please provide details about your question to help us assist you better.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please verify these before asking your question
+      options:
+        - label: I have searched [existing issues](https://github.com/ibm-hyper-protect/contract-ui/issues) for similar questions
+          required: true
+        - label: I have read the [README](https://github.com/ibm-hyper-protect/contract-ui/blob/main/README.md)
+          required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question Category
+      description: What is your question about?
+      options:
+        - Installation / Setup
+        - Development / Building from Source
+        - Packaging / Distribution
+        - Authentication / Login
+        - Contract Building Workflow
+        - Role / Persona Management
+        - Cryptographic Operations
+        - Key Management
+        - Export / Verification
+        - Audit Logs
+        - Error Troubleshooting
+        - Best Practices
+        - Integration with contract-cli
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: |
+        I'm trying to...
+        I need help with...
+        How do I...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / What You've Tried
+      description: Provide context about what you're trying to accomplish and what you've already tried
+      placeholder: |
+        I'm working on: ...
+        I've tried: ...
+        I'm stuck because: ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: persona
+    attributes:
+      label: Active Persona / Role
+      description: Which persona are you working with?
+      options:
+        - Admin
+        - Solution Provider
+        - Data Owner
+        - Environment Operator
+        - Auditor
+        - Viewer
+        - Not sure / General question
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Application Version
+      description: Found in the title bar or About screen (if applicable)
+      placeholder: "1.1.1"
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you using? (if applicable)
+      placeholder: "macOS 14.0, Ubuntu 22.04, Windows 11"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context or information that might help
+      placeholder: Any other details that might be relevant...
