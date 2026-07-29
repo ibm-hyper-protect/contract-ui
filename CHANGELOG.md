@@ -1,3 +1,5 @@
+## [1.3.7](https://github.com/ibm-hyper-protect/contract-ui/compare/v1.3.6...v1.3.7) (2026-07-29)
+
 ## [1.3.6](https://github.com/ibm-hyper-protect/contract-ui/compare/v1.3.5...v1.3.6) (2026-07-25)
 
 ## [1.3.5](https://github.com/ibm-hyper-protect/contract-ui/compare/v1.3.4...v1.3.5) (2026-07-24)
