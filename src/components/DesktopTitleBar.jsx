@@ -190,7 +190,6 @@ const DesktopTitleBar = ({
         consecutiveFailureCount.current = 0;
         setConnectionStatus('online');
         setConnectionError('');
-        checkConnection({ forceModal: false });
       } else if (nextStatus === 'failed') {
         setConnectionStatus('offline');
       }
