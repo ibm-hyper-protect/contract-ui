@@ -16,7 +16,6 @@ import {
   ErrorFilled,
   WarningAlt,
   Renew,
-  Link as LinkIcon,
   Information
 } from '@carbon/icons-react';
 import { useBuildStore } from '../store/buildStore';
@@ -456,35 +455,47 @@ const AuditViewer = ({ buildId, userRole = 'VIEWER' }) => {
       <div className="hash-chain">
         <h5>Hash Chain Visualization</h5>
         <div className="chain-container">
-          <div className="chain-item genesis">
+          <div className="chain-item chain-item--genesis">
             <div className="chain-node">
-                  <span className="node-label">Start</span>
-              <CodeSnippet type="inline" feedback="Copied">
-                {formatHash(auditEvents[0]?.previous_event_hash || 'N/A')}
-              </CodeSnippet>
+              <span className="node-label">GENESIS</span>
+              <span className="node-label--event">Start</span>
+              <span className="node-hash">
+                {formatHash(sortedAuditEvents[0]?.previous_event_hash || 'N/A')}
+              </span>
             </div>
           </div>
 
-          {auditEvents.map((event) => (
-            <React.Fragment key={event.id}>
-              <div className="chain-link">
-                <LinkIcon size={16} />
-              </div>
-              <div className="chain-item">
-                <div className="chain-node">
-                  <span className="node-label node-label--secondary">
-                    #{event.sequence_no} · {formatEventTitle(event)}
-                  </span>
-                  <CodeSnippet type="inline" feedback="Copied">
-                    {formatHash(event.event_hash)}
-                  </CodeSnippet>
-                  {verificationResult?.hashChain?.errors?.some(e => e.sequence === event.sequence_no) && (
-                    <ErrorFilled size={16} className="error-icon" />
-                  )}
+          {sortedAuditEvents.map((event) => {
+            const hasError = verificationResult?.hashChain?.errors?.some(
+              (e) => e.sequence === event.sequence_no
+            );
+            const tagType = EVENT_META[event.event_type]?.tagType || 'gray';
+
+            return (
+              <React.Fragment key={event.id}>
+                <svg className="chain-connector" aria-hidden="true" width="40" height="16" viewBox="0 0 40 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="0" y1="8" x2="33" y2="8" stroke="currentColor" strokeWidth="1.5" />
+                  <polyline points="28,3 36,8 28,13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                </svg>
+                <div className={`chain-item${hasError ? ' chain-item--error' : ''}`}>
+                  <div className="chain-node">
+                    <Tag type={tagType} size="sm">
+                      {EVENT_META[event.event_type]?.tagLabel || formatEventTitle(event)}
+                    </Tag>
+                    <span className="node-label--event">
+                      #{event.sequence_no} · {formatEventTitle(event)}
+                    </span>
+                    <span className="node-hash">{formatHash(event.event_hash)}</span>
+                    {verificationResult && (
+                      <span className={`node-status${hasError ? ' node-status--error' : ' node-status--ok'}`}>
+                        {hasError ? '✗ invalid' : '✓ verified'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </React.Fragment>
-          ))}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     );
