@@ -11,8 +11,6 @@ import {
   TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
-  TableToolbarMenu,
-  TableToolbarAction,
   TableBatchActions,
   TableBatchAction,
   TableSelectAll,
@@ -832,7 +830,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                         />
                         <Button
                           kind="ghost"
-                          size="sm"
+                          size="md"
                           className="build-management-toolbar-filter"
                           renderIcon={Filter}
                           iconDescription="Toggle filters"
@@ -846,7 +844,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                         {activeFilterCount > 0 && (
                           <Button
                             kind="ghost"
-                            size="sm"
+                            size="md"
                             renderIcon={Close}
                             iconDescription="Clear all filters"
                             onClick={clearAllFilters}
@@ -855,15 +853,9 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                             Clear Filters
                           </Button>
                         )}
-                        <TableToolbarMenu className="build-management-toolbar-menu">
-                          <TableToolbarAction onClick={() => handleExportCSV(activeRows, 'active-builds')}>
-                            Export as CSV
-                          </TableToolbarAction>
-                        </TableToolbarMenu>
                         <Button
                           kind="primary"
-                          size="sm"
-                          className="build-management-toolbar-export"
+                          size="md"
                           renderIcon={Download}
                           onClick={() => handleExportCSV(activeRows, 'active-builds')}
                           aria-label="Export active builds to CSV"
@@ -883,38 +875,38 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                       
                       <div className="build-management-filters__row">
                         <FilterableMultiSelect
-                          id="status-filter"
-                          titleText="Status"
-                          label="Filter by status"
-                          items={STATUS_FILTER_OPTIONS}
-                          itemToString={(item) => item ? item.label : ''}
-                          selectedItems={STATUS_FILTER_OPTIONS.filter(opt => selectedStatuses.includes(opt.id))}
-                          onChange={({ selectedItems }) => {
-                            setSelectedStatuses(selectedItems.map(item => item.id));
-                          }}
-                          size="sm"
-                        />
-                        
-                        <Dropdown
-                          id="creator-filter"
-                          titleText="Creator"
-                          label="Filter by creator"
-                          items={[{ id: '', label: 'All Creators', value: '' }, ...creatorOptions]}
-                          itemToString={(item) => item ? item.label : ''}
-                          selectedItem={creatorOptions.find(opt => opt.id === selectedCreator) || { id: '', label: 'All Creators', value: '' }}
-                          onChange={({ selectedItem }) => {
-                            setSelectedCreator(selectedItem?.id || '');
-                          }}
-                          size="sm"
-                        />
-                        
-                        <Select
-                          id="date-preset"
-                          labelText="Date Range"
-                          value={dateRangePreset}
-                          onChange={(e) => handleDateRangePreset(e.target.value)}
-                          size="sm"
-                        >
+                         id="status-filter"
+                         titleText="Status"
+                         label="Filter by status"
+                         items={STATUS_FILTER_OPTIONS}
+                         itemToString={(item) => item ? item.label : ''}
+                         selectedItems={STATUS_FILTER_OPTIONS.filter(opt => selectedStatuses.includes(opt.id))}
+                         onChange={({ selectedItems }) => {
+                           setSelectedStatuses(selectedItems.map(item => item.id));
+                         }}
+                         size="md"
+                       />
+                       
+                       <Dropdown
+                         id="creator-filter"
+                         titleText="Creator"
+                         label="Filter by creator"
+                         items={[{ id: '', label: 'All Creators', value: '' }, ...creatorOptions]}
+                         itemToString={(item) => item ? item.label : ''}
+                         selectedItem={creatorOptions.find(opt => opt.id === selectedCreator) || { id: '', label: 'All Creators', value: '' }}
+                         onChange={({ selectedItem }) => {
+                           setSelectedCreator(selectedItem?.id || '');
+                         }}
+                         size="md"
+                       />
+                       
+                       <Select
+                         id="date-preset"
+                         labelText="Date Range"
+                         value={dateRangePreset}
+                         onChange={(e) => handleDateRangePreset(e.target.value)}
+                         size="md"
+                       >
                           <SelectItem value="" text="All Dates" />
                           {DATE_RANGE_PRESETS.map((preset) => (
                             <SelectItem key={preset.id} value={preset.id} text={preset.label} />
@@ -1068,15 +1060,9 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                           Clear Filters
                         </Button>
                       )}
-                      <TableToolbarMenu className="build-management-toolbar-menu">
-                        <TableToolbarAction onClick={() => handleExportCSV(completedRows, 'completed-builds')}>
-                          Export as CSV
-                        </TableToolbarAction>
-                      </TableToolbarMenu>
                       <Button
                         kind="primary"
-                        size="sm"
-                        className="build-management-toolbar-export"
+                        size="md"
                         renderIcon={Download}
                         onClick={() => handleExportCSV(completedRows, 'completed-builds')}
                       >
@@ -1098,7 +1084,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                           onChange={({ selectedItems }) => {
                             setSelectedStatuses(selectedItems.map(item => item.id));
                           }}
-                          size="sm"
+                          size="md"
                         />
                         
                         <Dropdown
@@ -1111,7 +1097,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                           onChange={({ selectedItem }) => {
                             setSelectedCreator(selectedItem?.id || '');
                           }}
-                          size="sm"
+                          size="md"
                         />
                         
                         <Select
@@ -1119,7 +1105,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                           labelText="Date Range"
                           value={dateRangePreset}
                           onChange={(e) => handleDateRangePreset(e.target.value)}
-                          size="sm"
+                          size="md"
                         >
                           <SelectItem value="" text="All Dates" />
                           {DATE_RANGE_PRESETS.map((preset) => (
@@ -1141,13 +1127,13 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                               id="date-start-completed"
                               placeholder="mm/dd/yyyy"
                               labelText="Start Date"
-                              size="sm"
+                              size="md"
                             />
                             <DatePickerInput
                               id="date-end-completed"
                               placeholder="mm/dd/yyyy"
                               labelText="End Date"
-                              size="sm"
+                              size="md"
                             />
                           </DatePicker>
                         )}
