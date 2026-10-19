@@ -7,6 +7,7 @@ import {
   Theme,
   SideNav,
   SideNavItems,
+  SideNavLink,
   SideNavMenuItem,
   SideNavMenu,
   Modal,
@@ -45,19 +46,14 @@ const AppShell = ({
   children
 }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isSideNavExpanded, setIsSideNavExpanded] = useState(true);
+  const [isSideNavExpanded, setIsSideNavExpanded] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
   const [showFeatureHelp, setShowFeatureHelp] = useState(false);
-  
-  const handleLogoutClick = () => {
-    setShowLogoutModal(true);
-  };
-  
-  const confirmLogout = () => {
-    setShowLogoutModal(false);
-    onLogout();
-  };
-  
-  // Define which navigation items each role can see
+
+  const handleLogoutClick = () => setShowLogoutModal(true);
+  const confirmLogout = () => { setShowLogoutModal(false); onLogout(); };
+
   const availableRoles = sortRolesByPriority(
     Array.from(new Set((userRoles.length > 0 ? userRoles : [userRole]).filter(Boolean)))
   );
@@ -67,44 +63,36 @@ const AppShell = ({
   const canViewAnalytics = isAdmin;
   const canViewUsers = isAdmin;
   const canViewLogs = isAdmin || isAuditor;
-
   const hasAdminOperations = canViewAnalytics || canViewUsers || canViewLogs;
-  
-  // Get username from email
+
   const getUsername = (email) => {
     if (!email) return 'User';
-    return email.split('@')[0].replace(/\./g, ' ').split(' ').map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+    return email.split('@')[0].replace(/\./g, ' ').split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
-  
-  // Get persona icon
+
   const getPersonaIcon = (role) => {
     const icons = {
-      'ADMIN': UserAdmin,
-      'SOLUTION_PROVIDER': Application,
-      'DATA_OWNER': DataBase,
-      'AUDITOR': Security,
-      'ENV_OPERATOR': CloudApp,
-      'VIEWER': View
+      ADMIN: UserAdmin,
+      SOLUTION_PROVIDER: Application,
+      DATA_OWNER: DataBase,
+      AUDITOR: Security,
+      ENV_OPERATOR: CloudApp,
+      VIEWER: View,
     };
-    const IconComponent = icons[role] || UserAvatar;
-    return <IconComponent size={20} />;
+    const Icon = icons[role] || UserAvatar;
+    return <Icon size={20} />;
   };
 
   const handleRoleChange = (nextRole) => {
     if (!nextRole || nextRole === activeRole || typeof onRoleChange !== 'function') return;
     onRoleChange(nextRole);
   };
-  
+
   return (
     <>
       <Theme theme="g100">
-        <DesktopTitleBar
-          zIndex={10000}
-          showConnectionStatus
-          enableConnectionWatcher
-        />
+        <DesktopTitleBar zIndex={10000} showConnectionStatus enableConnectionWatcher />
 
         <Header aria-label="IBM Confidential Computing Contract UI" className="app-shell-header">
           <HeaderMenuButton
@@ -144,7 +132,16 @@ const AppShell = ({
             </div>
           </HeaderGlobalBar>
         </Header>
-        
+
+        {/* Mobile overlay — dims content and closes nav on tap */}
+        {isSideNavExpanded && (
+          <div
+            className="app-shell-sidenav-overlay"
+            onClick={() => setIsSideNavExpanded(false)}
+            aria-hidden="true"
+          />
+        )}
+
         <SideNav
           isFixedNav
           expanded={isSideNavExpanded}
@@ -153,32 +150,33 @@ const AppShell = ({
           className="app-shell-sidenav"
         >
           <SideNavItems className="app-shell-sidenav-items">
-            <SideNavMenuItem
+
+            <SideNavLink
+              renderIcon={Home}
               isActive={activeNav === 'HOME'}
-              onClick={() => setActiveNav('HOME')}
+              href="#home"
+              onClick={(e) => { e.preventDefault(); setActiveNav('HOME'); }}
             >
-              <Home size={16} className="app-shell-nav-icon" />
               Home
-            </SideNavMenuItem>
-            
-            {/* Build Management - visible to all users */}
-            <SideNavMenuItem
+            </SideNavLink>
+
+            <SideNavLink
+              renderIcon={Catalog}
               isActive={activeNav === 'BUILDS'}
-              onClick={() => setActiveNav('BUILDS')}
+              href="#builds"
+              onClick={(e) => { e.preventDefault(); setActiveNav('BUILDS'); }}
             >
-              <Catalog size={16} className="app-shell-nav-icon" />
               Build Management
-            </SideNavMenuItem>
-            
-            {/* Admin Operations - only for admin and auditor */}
+            </SideNavLink>
+
+            {/* SideNavMenu groups use SideNavMenuItem for sub-items (no icon) */}
             {hasAdminOperations && (
-              <SideNavMenu title="Admin Operations" defaultExpanded>
+              <SideNavMenu renderIcon={ChartLine} title="Admin Operations" defaultExpanded>
                 {canViewAnalytics && (
                   <SideNavMenuItem
                     isActive={activeNav === 'ANALYTICS'}
                     onClick={() => setActiveNav('ANALYTICS')}
                   >
-                    <ChartLine size={16} className="app-shell-nav-icon" />
                     Diagnostics & Analytics
                   </SideNavMenuItem>
                 )}
@@ -187,7 +185,6 @@ const AppShell = ({
                     isActive={activeNav === 'USERS'}
                     onClick={() => setActiveNav('USERS')}
                   >
-                    <UserMultiple size={16} className="app-shell-nav-icon" />
                     User Management
                   </SideNavMenuItem>
                 )}
@@ -196,36 +193,29 @@ const AppShell = ({
                     isActive={activeNav === 'LOGS'}
                     onClick={() => setActiveNav('LOGS')}
                   >
-                    <DocumentTasks size={16} className="app-shell-nav-icon" />
                     System Logs
                   </SideNavMenuItem>
                 )}
               </SideNavMenu>
             )}
-            
-            {/* Spacer to push Account menu to bottom */}
+
+            {/* Pushes account menu to bottom */}
             <div className="app-shell-sidenav-spacer" />
-            
-            {/* Account menu at bottom */}
+
             <div className="app-shell-account-menu">
               <SideNavMenu renderIcon={Settings} title="Account">
                 <SideNavMenuItem onClick={() => setActiveNav('SETTINGS')}>
                   Settings
                 </SideNavMenuItem>
                 <SideNavMenuItem onClick={() => setShowFeatureHelp(true)}>
-                  <div className="app-shell-logout-row">
-                    <Help size={16} />
-                    Feature Help
-                  </div>
+                  Feature Help
                 </SideNavMenuItem>
                 <SideNavMenuItem onClick={handleLogoutClick}>
-                  <div className="app-shell-logout-row">
-                    <Logout size={16} />
-                    Logout
-                  </div>
+                  Logout
                 </SideNavMenuItem>
               </SideNavMenu>
             </div>
+
           </SideNavItems>
         </SideNav>
       </Theme>
@@ -238,7 +228,7 @@ const AppShell = ({
           Powered by IBM Confidential Computing
         </footer>
       </main>
-      
+
       <Modal
         open={showLogoutModal}
         modalHeading="Confirm Logout"
