@@ -1,136 +1,140 @@
 import React, { useMemo } from 'react';
-import { Checkmark, Close } from '@carbon/icons-react';
+import { Tag } from '@carbon/react';
+import { CheckmarkFilled, SubtractAlt } from '@carbon/icons-react';
 
 /**
  * PasswordStrengthMeter Component
- * Displays password strength with visual feedback and criteria checklist
- * Follows IBM Carbon Design System patterns
+ * Displays password strength with visual feedback and criteria checklist.
+ * Follows IBM Carbon Design System patterns.
+ *
+ * Layout (always below the input):
+ *   1. 5 discrete segment bar (one per criterion)
+ *   2. Strength Tag + "N/5 met" count on one line
+ *   3. Thin divider
+ *   4. Criteria checklist
  */
 
 const PASSWORD_CRITERIA = [
-  { id: 'length', label: 'At least 12 characters', test: (pwd) => pwd.length >= 12 },
-  { id: 'uppercase', label: 'Contains uppercase letter (A-Z)', test: (pwd) => /[A-Z]/.test(pwd) },
-  { id: 'lowercase', label: 'Contains lowercase letter (a-z)', test: (pwd) => /[a-z]/.test(pwd) },
-  { id: 'number', label: 'Contains number (0-9)', test: (pwd) => /[0-9]/.test(pwd) },
-  { id: 'special', label: 'Contains special character (@$!%*?&)', test: (pwd) => /[@$!%*?&]/.test(pwd) }
+  { id: 'length',    label: 'At least 12 characters',          test: (p) => p.length >= 12 },
+  { id: 'uppercase', label: 'Contains uppercase letter (A-Z)', test: (p) => /[A-Z]/.test(p) },
+  { id: 'lowercase', label: 'Contains lowercase letter (a-z)', test: (p) => /[a-z]/.test(p) },
+  { id: 'number',    label: 'Contains number (0-9)',           test: (p) => /[0-9]/.test(p) },
+  { id: 'special',   label: 'Contains special character (@$!%*?&)', test: (p) => /[@$!%*?&]/.test(p) },
 ];
 
-const getStrengthLevel = (strength) => {
-  if (strength === 0) return { label: 'No password', color: 'gray' };
-  if (strength <= 20) return { label: 'Very Weak', color: 'red' };
-  if (strength <= 40) return { label: 'Weak', color: 'red' };
-  if (strength <= 60) return { label: 'Fair', color: 'yellow' };
-  if (strength <= 80) return { label: 'Good', color: 'cyan' };
-  return { label: 'Strong', color: 'green' };
-};
+/** Maps metCount → Carbon Tag type + label */
+const STRENGTH_MAP = [
+  { type: 'red',    label: 'Very weak' },  // 0
+  { type: 'red',    label: 'Weak'      },  // 1
+  { type: 'purple', label: 'Fair'      },  // 2
+  { type: 'cyan',   label: 'Fair'      },  // 3
+  { type: 'teal',   label: 'Good'      },  // 4
+  { type: 'green',  label: 'Strong'    },  // 5
+];
 
-const STRENGTH_COLOR_TOKENS = {
-  red: 'var(--cds-support-error, #da1e28)',
-  yellow: 'var(--cds-support-warning, #f1c21b)',
-  cyan: 'var(--cds-support-info, #0043ce)',
-  green: 'var(--cds-support-success, #198038)',
-  gray: 'var(--cds-border-subtle-01, #c6c6c6)'
-};
+/** Segment fill color per met-count bucket (Carbon design tokens) */
+const SEGMENT_COLORS = [
+  'var(--cds-support-error, #da1e28)',       // 0–1 met  → red
+  'var(--cds-support-error, #da1e28)',
+  'var(--cds-support-warning, #f1c21b)',     // 2 met    → yellow
+  'var(--cds-support-info, #0043ce)',        // 3 met    → blue
+  'var(--cds-support-success, #24a148)',     // 4 met    → green
+  'var(--cds-support-success, #24a148)',     // 5 met    → green
+];
 
-const calculatePasswordStrength = (password) => {
-  if (!password) return { strength: 0, checks: {}, metCount: 0 };
-  
+const calculateStrength = (password) => {
+  if (!password) return { checks: {}, metCount: 0 };
   const checks = {};
   let metCount = 0;
-  
-  PASSWORD_CRITERIA.forEach((criterion) => {
-    const met = criterion.test(password);
-    checks[criterion.id] = met;
+  PASSWORD_CRITERIA.forEach(({ id, test }) => {
+    const met = test(password);
+    checks[id] = met;
     if (met) metCount++;
   });
-  
-  // Calculate strength as percentage (0-100)
-  const strength = Math.round((metCount / PASSWORD_CRITERIA.length) * 100);
-  
-  return { strength, checks, metCount };
+  return { checks, metCount };
 };
 
-export const PasswordStrengthMeter = ({ 
-  password = '', 
+export const PasswordStrengthMeter = ({
+  password = '',
   showCriteria = true,
-  className = ''
+  className = '',
 }) => {
-  const { strength, checks, metCount } = useMemo(
-    () => calculatePasswordStrength(password),
-    [password]
-  );
-  
-  const strengthLevel = useMemo(() => getStrengthLevel(strength), [strength]);
-  const strengthFillColor = STRENGTH_COLOR_TOKENS[strengthLevel.color] || 'var(--cds-interactive, #0f62fe)';
-  
-  // Don't show anything if no password entered
+  const { checks, metCount } = useMemo(() => calculateStrength(password), [password]);
+
   if (!password) return null;
-  
+
+  const { type: tagType, label: strengthLabel } = STRENGTH_MAP[metCount];
+  const segmentColor = SEGMENT_COLORS[metCount];
+
   return (
-    <div className={`password-strength-meter ${className}`}>
-      <div className="password-strength-meter__header">
-        <span className="password-strength-meter__label">
-          Password Strength: <strong className={`password-strength-meter__level password-strength-meter__level--${strengthLevel.color}`}>
-            {strengthLevel.label}
-          </strong>
-        </span>
-        <span className="password-strength-meter__count">
-          {metCount}/{PASSWORD_CRITERIA.length} criteria met
-        </span>
-      </div>
-      
+    <div className={`psm ${className}`}>
+      {/* ── Segment bar ── */}
       <div
-        className="password-strength-meter__bar"
+        className="psm__segments"
         role="progressbar"
         aria-label="Password strength"
         aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={strength}
+        aria-valuemax={5}
+        aria-valuenow={metCount}
+        style={{
+          display: 'flex',
+          gap: '4px',
+          height: '6px',
+          minHeight: '6px',
+          marginBottom: '0.5rem',
+          width: '100%',
+        }}
       >
-        <div
-          className={`password-strength-meter__bar-fill password-strength-meter__bar-fill--${strengthLevel.color}`}
-          style={{
-            width: `${strength}%`,
-            backgroundColor: strengthFillColor
-          }}
-        />
+        {PASSWORD_CRITERIA.map(({ id }, i) => (
+          <div
+            key={id}
+            className="psm__segment"
+            style={{
+              flex: '1 1 0',
+              minWidth: 0,
+              height: '6px',
+              borderRadius: '3px',
+              backgroundColor: i < metCount
+                ? segmentColor
+                : 'var(--cds-border-subtle-01, #c6c6c6)',
+            }}
+          />
+        ))}
       </div>
-      
+
+      {/* ── Strength label row ── */}
+      <div className="psm__meta">
+        <Tag type={tagType} size="sm" className="psm__tag">{strengthLabel}</Tag>
+        <span className="psm__count">{metCount}/{PASSWORD_CRITERIA.length} criteria met</span>
+      </div>
+
+      {/* ── Criteria checklist ── */}
       {showCriteria && (
-        <div className="password-strength-meter__criteria">
-          <p className="password-strength-meter__criteria-title">Password must contain:</p>
-          <ul className="password-strength-meter__criteria-list">
-            {PASSWORD_CRITERIA.map((criterion) => {
-              const met = checks[criterion.id];
-              return (
-                <li 
-                  key={criterion.id}
-                  className={`password-strength-meter__criterion ${met ? 'password-strength-meter__criterion--met' : ''}`}
-                >
-                  {met ? (
-                    <Checkmark size={16} className="password-strength-meter__icon password-strength-meter__icon--success" />
-                  ) : (
-                    <Close size={16} className="password-strength-meter__icon password-strength-meter__icon--error" />
-                  )}
-                  <span>{criterion.label}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <ul className="psm__list">
+          {PASSWORD_CRITERIA.map(({ id, label }) => {
+            const met = checks[id];
+            return (
+              <li key={id} className={`psm__item${met ? ' psm__item--met' : ''}`}>
+                {met
+                  ? <CheckmarkFilled size={16} className="psm__icon psm__icon--ok" />
+                  : <SubtractAlt     size={16} className="psm__icon psm__icon--unmet" />
+                }
+                <span>{label}</span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
 };
 
 export const isPasswordStrong = (password) => {
-  const { strength } = calculatePasswordStrength(password);
-  return strength > 80; // "Strong" is 81-100
+  const { metCount } = calculateStrength(password);
+  return metCount === PASSWORD_CRITERIA.length;
 };
 
-export const isPasswordValid = (password) => {
-  const { metCount } = calculatePasswordStrength(password);
-  return metCount === PASSWORD_CRITERIA.length; // All criteria must be met
-};
+/** Alias kept for backwards-compat with UserManagement / PasswordManager */
+export const isPasswordValid = isPasswordStrong;
 
 export default PasswordStrengthMeter;

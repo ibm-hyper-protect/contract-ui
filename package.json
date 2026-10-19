@@ -62,5 +62,8 @@
     "react-router-dom": "^7.18.4",
     "sass": "^1.105.1",
     "zustand": "^5.0.15"
+  },
+  "allowScripts": {
+    "electron@44.7.2": true
   }
 }
