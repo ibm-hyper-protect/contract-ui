@@ -1,209 +1,140 @@
-import React, { useMemo } from 'react';
-import { Tile, SkeletonText } from '@carbon/react';
-import { 
-  Checkmark, 
-  InProgress, 
-  WarningAlt, 
-  Time,
-  Catalog,
-  User
-} from '@carbon/icons-react';
-import { BUILD_STATUS_CONFIG } from '../utils/constants';
+import React, { useId, useMemo } from 'react';
+import {
+  Layer, SkeletonText, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableHeader, TableRow, Tag, Tile,
+} from '@carbon/react';
+import { BUILD_STATUS, BUILD_STATUS_CONFIG } from '../utils/constants';
 
-/**
- * Build Statistics Component
- * Displays visual statistics and metrics for builds
- */
-const BuildStatistics = ({ builds, loading = false }) => {
-  // Calculate statistics
+const STATUS_ORDER = Object.keys(BUILD_STATUS_CONFIG);
+
+const getStatusLabel = status => BUILD_STATUS_CONFIG[status]?.label || (
+  status === 'UNKNOWN' ? 'Unknown status' : status.toLowerCase().replaceAll('_', ' ')
+);
+
+const BuildStatistics = ({ builds = [], loading = false }) => {
+  const headingId = useId();
   const statistics = useMemo(() => {
-    if (!builds || builds.length === 0) {
-      return {
-        total: 0,
-        byStatus: {},
-        completionRate: 0,
-        avgTimeToComplete: 0,
-        activeBuilds: 0,
-        completedBuilds: 0,
-        cancelledBuilds: 0,
-        uniqueCreators: 0
-      };
-    }
+    const items = builds || [];
+    const byStatus = new Map();
+    const creators = new Set();
+    let missingCreators = 0;
 
-    const stats = {
-      total: builds.length,
-      byStatus: {},
-      completionRate: 0,
-      avgTimeToComplete: 0,
-      activeBuilds: 0,
-      completedBuilds: 0,
-      cancelledBuilds: 0,
-      uniqueCreators: new Set()
-    };
-
-    // Count by status
-    builds.forEach(build => {
-      const status = (build.status || '').toUpperCase();
-      stats.byStatus[status] = (stats.byStatus[status] || 0) + 1;
-
-      // Track creators
-      const creator = build.created_by || build.createdBy || 'Unknown';
-      stats.uniqueCreators.add(creator);
-
-      // Categorize builds
-      if (status === 'CONTRACT_DOWNLOADED') {
-        stats.completedBuilds++;
-      } else if (status === 'CANCELLED') {
-        stats.cancelledBuilds++;
-      } else {
-        stats.activeBuilds++;
-      }
+    items.forEach(build => {
+      const status = (build.status || '').trim().toUpperCase() || 'UNKNOWN';
+      byStatus.set(status, (byStatus.get(status) || 0) + 1);
+      const creator = build.created_by || build.createdBy;
+      if (creator) creators.add(creator);
+      else missingCreators += 1;
     });
 
-    // Calculate completion rate
-    if (stats.total > 0) {
-      stats.completionRate = Math.round((stats.completedBuilds / stats.total) * 100);
-    }
+    const completed = byStatus.get(BUILD_STATUS.CONTRACT_DOWNLOADED) || 0;
+    const cancelled = byStatus.get(BUILD_STATUS.CANCELLED) || 0;
+    const stages = [...byStatus].sort(([first], [second]) => {
+      const firstIndex = STATUS_ORDER.indexOf(first);
+      const secondIndex = STATUS_ORDER.indexOf(second);
+      return (firstIndex < 0 ? STATUS_ORDER.length : firstIndex)
+        - (secondIndex < 0 ? STATUS_ORDER.length : secondIndex)
+        || first.localeCompare(second);
+    });
 
-    // Calculate average time to complete (simplified - would need actual completion times)
-    // For now, just show a placeholder
-    stats.avgTimeToComplete = 0;
-
-    stats.uniqueCreators = stats.uniqueCreators.size;
-
-    return stats;
+    return {
+      total: items.length,
+      active: items.length - completed - cancelled,
+      completed,
+      cancelled,
+      completionRate: items.length ? Math.round(completed / items.length * 100) : 0,
+      creators: creators.size,
+      missingCreators,
+      stages,
+    };
   }, [builds]);
 
-  // Get status color
-  const getStatusColor = (status) => {
-    const config = BUILD_STATUS_CONFIG[status];
-    return config?.kind || 'gray';
-  };
-
-  if (loading) {
-    return (
-      <div className="build-statistics">
-        <div className="build-statistics__grid">
-          {[1, 2, 3, 4].map(i => (
-            <Tile key={i} className="build-statistics__card">
-              <SkeletonText heading width="60%" />
-              <SkeletonText width="40%" />
-            </Tile>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const metrics = [
+    { label: 'Total builds', value: statistics.total, detail: 'All build stages' },
+    { label: 'Active builds', value: statistics.active, detail: 'Contract download pending' },
+    { label: 'Completed', value: statistics.completed, detail: 'Download acknowledged · ' + statistics.completionRate + '% of total' },
+    { label: 'Cancelled', value: statistics.cancelled, detail: 'Builds that were stopped' },
+  ];
 
   return (
-    <div className="build-statistics">
-      <div className="build-statistics__grid">
-        {/* Total Builds */}
-        <Tile className="build-statistics__card">
-          <div className="build-statistics__card-icon build-statistics__card-icon--primary">
-            <Catalog size={24} />
-          </div>
-          <div className="build-statistics__card-content">
-            <div className="build-statistics__card-value">{statistics.total}</div>
-            <div className="build-statistics__card-label">Total Builds</div>
-          </div>
-        </Tile>
+    <section className="build-statistics" aria-labelledby={headingId} aria-busy={loading}>
+      <div className="build-statistics__heading">
+        <h2 id={headingId} className="build-statistics__title">Build overview</h2>
+        <p className="build-statistics__description">All builds available to your account.</p>
+      </div>
 
-        {/* Active Builds */}
-        <Tile className="build-statistics__card">
-          <div className="build-statistics__card-icon build-statistics__card-icon--info">
-            <InProgress size={24} />
-          </div>
-          <div className="build-statistics__card-content">
-            <div className="build-statistics__card-value">{statistics.activeBuilds}</div>
-            <div className="build-statistics__card-label">Active Builds</div>
-          </div>
-        </Tile>
+      <dl className="build-statistics__metrics">
+        {metrics.map(metric => (
+          <Tile key={metric.label} className="build-statistics__metric">
+            <dt className="build-statistics__metric-label">{metric.label}</dt>
+            <dd className="build-statistics__metric-value">
+              {loading ? <SkeletonText heading width="40%" /> : metric.value}
+            </dd>
+            <dd className="build-statistics__metric-detail">
+              {loading ? <SkeletonText width="80%" /> : metric.detail}
+            </dd>
+          </Tile>
+        ))}
+      </dl>
 
-        {/* Cancelled Builds - Position 3 (top-right) */}
-        <Tile className="build-statistics__card">
-          <div className="build-statistics__card-icon build-statistics__card-icon--warning">
-            <WarningAlt size={24} />
-          </div>
-          <div className="build-statistics__card-content">
-            <div className="build-statistics__card-value">{statistics.cancelledBuilds}</div>
-            <div className="build-statistics__card-label">Cancelled</div>
-          </div>
-        </Tile>
-
-        {/* Status Breakdown - Position 4, spans 2×2 */}
-        <Tile className="build-statistics__card build-statistics__card--wide">
-          <div className="build-statistics__card-header">
-            <div className="build-statistics__card-icon build-statistics__card-icon--neutral">
-              <Time size={24} />
-            </div>
-            <div className="build-statistics__card-title">Status Breakdown</div>
-          </div>
-          <div className="build-statistics__status-list">
-            {Object.entries(statistics.byStatus)
-              .sort((a, b) => b[1] - a[1])
-              .map(([status, count]) => {
-                const config = BUILD_STATUS_CONFIG[status];
-                const percentage = statistics.total > 0
-                  ? Math.round((count / statistics.total) * 100)
-                  : 0;
-                const colorKind = getStatusColor(status);
-                
-                // Debug: log status and color
-                console.log('Status:', status, 'Color:', colorKind, 'Percentage:', percentage);
-                
-                return (
-                  <div key={status} className="build-statistics__status-item">
-                    <div className="build-statistics__status-info">
-                      <span className="build-statistics__status-label">
-                        {config?.label || status}
-                      </span>
-                      <span className="build-statistics__status-count">
-                        {count} ({percentage}%)
-                      </span>
-                    </div>
-                    <div className="build-statistics__status-bar">
-                      <div
-                        className={`build-statistics__status-bar-fill build-statistics__status-bar-fill--${colorKind}`}
-                        style={{
-                          width: `${percentage}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </Tile>
-
-        {/* Completed Builds - Position 6 (bottom-right) */}
-        <Tile className="build-statistics__card">
-          <div className="build-statistics__card-icon build-statistics__card-icon--success">
-            <Checkmark size={24} />
-          </div>
-          <div className="build-statistics__card-content">
-            <div className="build-statistics__card-value">{statistics.completedBuilds}</div>
-            <div className="build-statistics__card-label">Completed</div>
-            {statistics.total > 0 && (
-              <div className="build-statistics__card-meta">
-                {statistics.completionRate}% completion rate
-              </div>
+      <Tile className="build-statistics__breakdown">
+        <div className="build-statistics__breakdown-header">
+          <div>
+            <h3 className="build-statistics__subtitle">Build stages</h3>
+            <p className="build-statistics__description">Counts and share of all available builds.</p>
+            {!loading && statistics.missingCreators > 0 && (
+              <p className="build-statistics__description">
+                Creator information is unavailable for {statistics.missingCreators} {statistics.missingCreators === 1 ? 'build' : 'builds'}.
+              </p>
             )}
           </div>
-        </Tile>
+          {!loading && <Tag type="gray" size="sm">
+            {statistics.creators} unique {statistics.creators === 1 ? 'creator' : 'creators'}
+          </Tag>}
+        </div>
 
-        {/* Unique Creators - Position 7 (third row, left) */}
-        <Tile className="build-statistics__card">
-          <div className="build-statistics__card-icon build-statistics__card-icon--secondary">
-            <User size={24} />
+        {loading ? (
+          <div className="build-statistics__placeholder" role="status">
+            <span className="cds--visually-hidden">Loading build overview</span>
+            <SkeletonText paragraph lineCount={3} />
           </div>
-          <div className="build-statistics__card-content">
-            <div className="build-statistics__card-value">{statistics.uniqueCreators}</div>
-            <div className="build-statistics__card-label">Unique Creators</div>
+        ) : statistics.stages.length ? (
+          <Layer>
+            <TableContainer className="build-statistics__table">
+              <Table size="sm" aria-label="Build status breakdown">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Stage</TableHeader>
+                    <TableHeader className="build-statistics__number">Builds</TableHeader>
+                    <TableHeader className="build-statistics__number">Share</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {statistics.stages.map(([status, count]) => (
+                    <TableRow key={status}>
+                      <TableCell>
+                        <Tag type={BUILD_STATUS_CONFIG[status]?.kind || 'gray'} size="sm">
+                          {getStatusLabel(status)}
+                        </Tag>
+                      </TableCell>
+                      <TableCell className="build-statistics__number">{count}</TableCell>
+                      <TableCell className="build-statistics__number">
+                        {Math.round(count / statistics.total * 100)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Layer>
+        ) : (
+          <div className="build-statistics__empty">
+            <p>No builds to summarize yet.</p>
+            <p className="build-statistics__description">Build stages will appear when a build is available.</p>
           </div>
-        </Tile>
-      </div>
-    </div>
+        )}
+      </Tile>
+    </section>
   );
 };
 
