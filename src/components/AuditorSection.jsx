@@ -20,6 +20,21 @@ import ConfirmDialog from './ConfirmDialog';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 
+/** Maps build status strings → Carbon Tag type for semantic colour coding */
+const STATUS_TAG_TYPE = {
+  CREATED:                    'blue',
+  SIGNING_KEY_REGISTERED:     'cyan',
+  WORKLOAD_SUBMITTED:         'cyan',
+  ENVIRONMENT_STAGED:         'teal',
+  ATTESTATION_KEY_REGISTERED: 'teal',
+  FINALIZED:                  'green',
+  CONTRACT_DOWNLOADED:        'green',
+  CANCELLED:                  'gray',
+  FAILED:                     'red',
+  AUDITOR_KEYS_REGISTERED:    'purple',
+};
+const statusTagType = (s) => STATUS_TAG_TYPE[(s || '').toUpperCase()] || 'blue';
+
 const TERMINAL_STATUSES = new Set(['FINALIZED', 'CONTRACT_DOWNLOADED', 'CANCELLED']);
 const SIGNING_REGISTERED_STATUSES = new Set([
   'SIGNING_KEY_REGISTERED',
@@ -304,13 +319,12 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
       )}
 
       {!loadingStatus && (
-        <Tile className="workflow-complete-tile" style={{ marginBottom: 16 }}>
+        <Tile className="workflow-complete-tile">
           <div className="workflow-complete-tile__row">
-            <div>
-              <strong>Current Build Status</strong>
-              <div className="workflow-complete-tile__meta">{liveStatus || 'Unknown'}</div>
-            </div>
-            <Tag type="blue" className="workflow-complete-tile__tag">{liveStatus || 'UNKNOWN'}</Tag>
+            <strong className="workflow-complete-tile__label">Current Build Status</strong>
+            <Tag type={statusTagType(liveStatus)} className="workflow-complete-tile__tag">
+              {liveStatus || 'UNKNOWN'}
+            </Tag>
           </div>
         </Tile>
       )}
@@ -319,8 +333,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
         {showSigningCard && (
           <div className="workflow-step-card">
             <h4 className="workflow-step-heading">
-              <Key size={18} />
-              Step 1 — Register Signing Key
+              <Key size={18} className="workflow-step-heading__icon" />
+              <span>Step 1 — Register Signing Key</span>
               {isSigningRegistered && <Tag type="green" size="sm">Done</Tag>}
             </h4>
             <p className="workflow-step-copy">
@@ -348,7 +362,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
             )}
             <div className="workflow-inline-actions workflow-inline-actions--spaced">
               <Button
-                kind="secondary"
+                kind="primary"
                 onClick={handleRegisterSigningKey}
                 disabled={registeringSigning || isTerminal || isSigningRegistered}
               >
