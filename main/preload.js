@@ -46,6 +46,21 @@ contextBridge.exposeInMainWorld('electron', {
     verify: (hash, signature, publicKey) =>
       ipcRenderer.invoke('crypto:verify', hash, signature, publicKey),
     
+    exportIdentityBackup: (userId, password) =>
+      ipcRenderer.invoke('crypto:exportIdentityBackup', userId, password),
+    importIdentityBackup: (userId, password) =>
+      ipcRenderer.invoke('crypto:importIdentityBackup', userId, password),
+    getIdentityKeyInfo: (userId) =>
+      ipcRenderer.invoke('crypto:getIdentityKeyInfo', userId),
+    prepareIdentityKey: (userId) =>
+      ipcRenderer.invoke('crypto:prepareIdentityKey', userId),
+    activateIdentityKey: (userId, fingerprint) =>
+      ipcRenderer.invoke('crypto:activateIdentityKey', userId, fingerprint),
+    discardPendingIdentityKey: (userId) =>
+      ipcRenderer.invoke('crypto:discardPendingIdentityKey', userId),
+    signIdentityHash: (userId, hash, fingerprint) =>
+      ipcRenderer.invoke('crypto:signIdentityHash', userId, hash, fingerprint),
+
     storePrivateKey: (userId, key) =>
       ipcRenderer.invoke('crypto:storePrivateKey', userId, key),
     

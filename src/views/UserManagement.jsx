@@ -21,6 +21,8 @@ import {
 } from '@carbon/react';
 import { Add, Renew } from '@carbon/icons-react';
 import userService from '../services/userService';
+import PublicKeyManager from '../components/PublicKeyManager';
+import userKeyService from '../services/userKeyService';
 import { ROLE_NAMES } from '../utils/constants';
 import { DataTableSkeletonLoader } from '../components/LoadingSpinner';
 import { PasswordStrengthMeter, isPasswordValid } from '../components/PasswordStrengthMeter';
@@ -36,7 +38,7 @@ const ACTIVE_TABLE_HEADERS = [
   { key: 'email', header: 'Email' },
   { key: 'role', header: 'Persona Role' },
   { key: 'keyStatus', header: 'Public Key Status' },
-  { key: 'keyExpiresAt', header: 'Key Expiry' },
+  { key: 'keyExpiresAt', header: 'Newest Active Key Expiry' },
   { key: 'passwordStatus', header: 'Password Status' },
   { key: 'action', header: 'Actions' }
 ];
@@ -59,6 +61,7 @@ const UserManagement = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [passwordResetModalOpen, setPasswordResetModalOpen] = useState(false);
+  const [keyHistoryUser, setKeyHistoryUser] = useState(null);
   const [keyRotationModalOpen, setKeyRotationModalOpen] = useState(false);
   const [reactivateModalOpen, setReactivateModalOpen] = useState(false);
   const [adminResetModalOpen, setAdminResetModalOpen] = useState(false);
@@ -177,9 +180,9 @@ const UserManagement = () => {
             </div>
           ),
           keyStatus: (
-            u.public_key_fingerprint ? (
+            (typeof u.active_key_count === 'number' ? u.active_key_count > 0 : u.public_key_fingerprint) ? (
               <Tag type={keyExpired ? 'red' : 'green'}>
-                {keyExpired ? 'Expired' : 'Active'}
+                {typeof u.active_key_count === 'number' ? `${u.active_key_count} active` : keyExpired ? 'Expired' : 'Active'}
               </Tag>
             ) : (
               <Tag type="gray">Not Registered</Tag>
@@ -214,8 +217,9 @@ const UserManagement = () => {
                   itemText="Force Password Expiry"
                   onClick={() => handleForcePasswordReset(u)}
                 />
+                <OverflowMenuItem itemText="Manage Device Keys" onClick={() => setKeyHistoryUser(u)} />
                 <OverflowMenuItem
-                  itemText="Force Key Rotation"
+                  itemText="Revoke All Active Keys"
                   onClick={() => handleForceKeyRotation(u)}
                 />
                 <OverflowMenuItem
@@ -454,11 +458,12 @@ const UserManagement = () => {
   const confirmKeyRotation = async () => {
     try {
       setLoading(true);
-      await userService.forceKeyRotation(selectedUser.id);
+      const result = await userService.forceKeyRotation(selectedUser.id);
+      if (selectedUser.id === useAuthStore.getState().user?.id) await userKeyService.refresh(selectedUser.id);
       setNotification({
         kind: 'success',
         title: 'Success',
-        subtitle: 'Public key successfully revoked. User must rotate their key.'
+        subtitle: `${result.revoked_count} active key(s) revoked. The user must register a new device key.`
       });
       await loadUsers(); // Refresh UI
     } catch (err) {
@@ -568,6 +573,14 @@ const UserManagement = () => {
       </div>
     );
   }
+
+  if (keyHistoryUser) return (
+    <div className="app-page app-page--wide app-page--padded">
+      <Button kind="ghost" onClick={() => { setKeyHistoryUser(null); loadUsers(); }}>Back to users</Button>
+      <h1>Device keys — {keyHistoryUser.name || keyHistoryUser.email}</h1>
+      <PublicKeyManager userId={keyHistoryUser.id} />
+    </div>
+  );
 
   return (
     <div className="app-page user-management-page">
@@ -901,9 +914,9 @@ const UserManagement = () => {
       {/* Force Key Rotation Modal */}
       <Modal
         open={keyRotationModalOpen}
-        modalHeading="Force Key Rotation"
+        modalHeading="Revoke All Active Keys"
         modalLabel="User Management"
-        primaryButtonText="Force Rotation"
+        primaryButtonText="Revoke All Keys"
         secondaryButtonText="Cancel"
         onRequestSubmit={confirmKeyRotation}
         onRequestClose={() => {
@@ -913,16 +926,12 @@ const UserManagement = () => {
         danger
       >
         <p>
-          Are you sure you want to force key rotation for <strong>{selectedUser?.name}</strong>?
+          Revoke all active device keys for <strong>{selectedUser?.name}</strong>?
         </p>
         <p className="user-management-modal-copy user-management-modal-copy--spaced">
-          The user will be required to generate a new RSA-4096 key pair on their next login:
+          All devices will lose signing access. The user must confirm their current password
+          and register a new device key. Key history and existing audit signatures remain available.
         </p>
-        <ul className="user-management-modal-list">
-          <li>Generate new RSA-4096 key pair</li>
-          <li>Register the new public key</li>
-          <li>Old key will be invalidated</li>
-        </ul>
       </Modal>
 
       {/* Reactivate User Modal */}

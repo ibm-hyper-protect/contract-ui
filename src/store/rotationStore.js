@@ -8,7 +8,8 @@ export const useRotationStore = create((set, get) => ({
   // State
   expiredCredentials: {
     expired_passwords: [],
-    expired_keys: []
+    expired_public_keys: [],
+    users_without_active_key: []
   },
 
   myCredentialStatus: null,
@@ -32,10 +33,10 @@ export const useRotationStore = create((set, get) => ({
     expiredCredentials: data,
     dashboard: {
       totalExpiredPasswords: data.expired_passwords?.length || 0,
-      totalExpiredKeys: data.expired_keys?.length || 0,
+      totalExpiredKeys: data.expired_public_keys?.length || 0,
       totalAffectedUsers: new Set([
         ...(data.expired_passwords?.map(u => u.user_id) || []),
-        ...(data.expired_keys?.map(u => u.user_id) || [])
+        ...(data.expired_public_keys?.map(u => u.user_id) || [])
       ]).size,
       lastUpdated: new Date().toISOString()
     },
@@ -66,11 +67,11 @@ export const useRotationStore = create((set, get) => ({
     }
   })),
 
-  removeExpiredKey: (userId) => set((state) => ({
+  removeExpiredKey: (keyId) => set((state) => ({
     expiredCredentials: {
       ...state.expiredCredentials,
-      expired_keys: state.expiredCredentials.expired_keys.filter(
-        u => u.user_id !== userId
+      expired_public_keys: state.expiredCredentials.expired_public_keys.filter(
+        key => key.key_id !== keyId
       )
     },
     dashboard: {
@@ -93,7 +94,7 @@ export const useRotationStore = create((set, get) => ({
 
   getExpiredKeyUsers: () => {
     const state = get();
-    return state.expiredCredentials.expired_keys || [];
+    return state.expiredCredentials.expired_public_keys || [];
   },
 
   getUsersWithBothExpired: () => {
@@ -102,7 +103,7 @@ export const useRotationStore = create((set, get) => ({
       state.expiredCredentials.expired_passwords?.map(u => u.user_id) || []
     );
     const keyUserIds = new Set(
-      state.expiredCredentials.expired_keys?.map(u => u.user_id) || []
+      state.expiredCredentials.expired_public_keys?.map(u => u.user_id) || []
     );
 
     const bothExpired = [];
@@ -111,7 +112,7 @@ export const useRotationStore = create((set, get) => ({
         const passwordUser = state.expiredCredentials.expired_passwords.find(
           u => u.user_id === userId
         );
-        const keyUser = state.expiredCredentials.expired_keys.find(
+        const keyUser = state.expiredCredentials.expired_public_keys.find(
           u => u.user_id === userId
         );
 
@@ -205,7 +206,7 @@ export const useRotationStore = create((set, get) => ({
 
     // Add users with only key expired
     const keyUserIds = new Set(bothExpired.map(u => u.user_id));
-    state.expiredCredentials.expired_keys?.forEach(user => {
+    state.expiredCredentials.expired_public_keys?.forEach(user => {
       if (!keyUserIds.has(user.user_id)) {
         users.push({
           ...user,

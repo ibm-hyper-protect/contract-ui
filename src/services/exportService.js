@@ -67,20 +67,14 @@ class ExportService {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
 
-    // Get private key
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found. Please register your public key first.');
-    }
-
-    // Sign the contract hash
-    const signature = await cryptoService.sign(contractHash, privateKey);
+    // Pin the receipt and its HTTP request to the same device key, even during rotation.
+    const { signature, fingerprint } = await cryptoService.signIdentityHash(user.id, contractHash);
 
     // Submit acknowledgment
     const response = await apiClient.post(`/builds/${buildId}/acknowledge-download`, {
       contract_hash: contractHash,
       signature: signature
-    });
+    }, { identityFingerprint: fingerprint });
 
     return response.data;
   }
@@ -149,12 +143,8 @@ class ExportService {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
 
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found');
-    }
-
-    return await cryptoService.sign(contractHash, privateKey);
+    const { signature } = await cryptoService.signIdentityHash(user.id, contractHash);
+    return signature;
   }
 
   /**
