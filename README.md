@@ -16,6 +16,10 @@ The IBM Confidential Computing Contract UI is an Electron-based desktop applicat
 - **Audit Trail**: Comprehensive logging of all contract operations and user actions
 - **Export & Verification**: Contract export with signature verification capabilities
 
+### Device keys
+
+Manage up to five active identity keys per account, identify this device’s signing key, transfer an encrypted backup to a trusted device, and revoke keys individually. Requires the multi-key Contract Manager backend. See the [device-key guide](docs/device-keys.md) for setup, recovery, and verification.
+
 ### Security Features
 - **Key Management**: Secure storage and rotation of cryptographic keys
 - **Digital Signatures**: Sign contract sections with RSA-4096 private keys

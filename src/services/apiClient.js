@@ -59,7 +59,8 @@ class ApiClient {
           const signatureHeaders = await signatureMiddleware.signRequest(
             config.method,
             config.url,
-            config.data
+            config.data,
+            config
           );
           Object.assign(config.headers, signatureHeaders);
         } catch (error) {
@@ -71,10 +72,7 @@ class ApiClient {
         config.requestId = `${config.method}-${config.url}-${Date.now()}`;
         
         // Log request for debugging
-        console.log(`[API Request] ${config.method.toUpperCase()} ${config.baseURL}${config.url}`, {
-          headers: config.headers,
-          data: config.data
-        });
+        console.log(`[API Request] ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
         
         return config;
       },
@@ -91,8 +89,7 @@ class ApiClient {
         
         // Log response for debugging
         console.log(`[API Response] ${response.config.method.toUpperCase()} ${response.config.url}`, {
-          status: response.status,
-          data: response.data
+          status: response.status
         });
         
         return response;
@@ -107,8 +104,7 @@ class ApiClient {
         const logFn = error.response?.status === 400 ? console.warn : console.error;
         logFn(`[API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}`, {
           status: error.response?.status,
-          message: error.response?.data?.message || error.message,
-          data: error.response?.data
+          message: error.response?.data?.error?.message || error.message
         });
 
         // Handle 401 Unauthorized (skip for login endpoint — let it surface naturally)
@@ -122,6 +118,7 @@ class ApiClient {
           const errCode = error.response?.data?.error?.code;
           if (errCode === 'ACCOUNT_SETUP_REQUIRED') {
             const pending = error.response?.data?.error?.details?.setup_pending || [];
+            useAuthStore.getState().setSetupState({ requiresSetup: true, setupPending: pending });
             const stepLabels = pending.map((s) =>
               s === 'password_change' ? 'change password' :
               s === 'public_key_registration' ? 'register public key' :
@@ -172,7 +169,7 @@ class ApiClient {
     const normalized = {
       message: customMessage || backendMsg || error.message || 'An unexpected error occurred',
       status: error.response?.status,
-      code: error.code,
+      code: error.response?.data?.error?.code || error.code,
       data: error.response?.data,
       isNetworkError: !error.response,
       isTimeout: error.code === 'ECONNABORTED',
@@ -186,6 +183,7 @@ class ApiClient {
    * Determine if request should be retried
    */
   shouldRetry(error) {
+    if (!error.config) return false;
     const method = (error.config?.method || '').toUpperCase();
     const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
     if (isMutating) {

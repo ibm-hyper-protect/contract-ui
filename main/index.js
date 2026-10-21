@@ -487,6 +487,13 @@ registerIpcHandler('crypto:verify', (event, hash, signature, publicKeyPem) => {
 });
 
 // Key Storage
+const identityBackup = require('./crypto/identityBackup');
+registerIpcHandler('crypto:exportIdentityBackup', (_event, userId, password) => identityBackup.exportBackup(userId, password));
+registerIpcHandler('crypto:importIdentityBackup', (_event, userId, password) => identityBackup.importBackup(userId, password));
+for (const method of ['getIdentityKeyInfo', 'prepareIdentityKey', 'activateIdentityKey', 'discardPendingIdentityKey', 'signIdentityHash']) {
+  registerIpcHandler(`crypto:${method}`, (_event, ...args) => keyStorage[method](...args));
+}
+
 registerIpcHandler('crypto:storePrivateKey', async (event, userId, privateKeyPem) => {
   try {
     await keyStorage.storePrivateKey(userId, privateKeyPem);

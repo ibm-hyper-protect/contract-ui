@@ -530,7 +530,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
   const isUserReady = (u) =>
     u.is_active &&
     !u.must_change_password &&
-    u.public_key_fingerprint != null;
+    (typeof u.active_key_count === 'number' ? u.active_key_count > 0 : u.public_key_fingerprint != null);
 
   const readyUsers = useMemo(() => users.filter(isUserReady), [users]);
   const eligibleUsersByRole = useMemo(

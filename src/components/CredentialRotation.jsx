@@ -38,6 +38,7 @@ import {
 import { useRotationStore } from '../store/rotationStore';
 import { useAuthStore } from '../store/authStore';
 import rotationService from '../services/rotationService';
+import userKeyService from '../services/userKeyService';
 
 /**
  * CredentialRotation Component
@@ -73,11 +74,13 @@ const CredentialRotation = () => {
   const expiredKeys = (expiredCredentials?.expired_public_keys || []).map(item => {
     const neverRegistered = !item.expires_at || item.expires_at.startsWith('0001-');
     return {
+      key_id: item.key_id,
+      label: item.label,
       user_id: item.user_id,
       username: item.user_name,
       full_name: item.user_name,
       email: item.user_email,
-      key_fingerprint: null,
+      key_fingerprint: item.fingerprint,
       key_expires_at: neverRegistered ? null : item.expires_at,
       days_until_expiry: neverRegistered ? -9999 : -item.days_overdue
     };
@@ -112,7 +115,7 @@ const CredentialRotation = () => {
       const data = await rotationService.getExpiredCredentials();
       setExpiredCredentials(data);
 
-      const soon = await rotationService.getUsersExpiringSoon(30).catch(() => []);
+      const soon = await rotationService.getUsersExpiringSoon(30);
       setExpiringSoon(soon);
     } catch (err) {
       setError(err.message || 'Failed to load rotation data');
@@ -140,8 +143,8 @@ const CredentialRotation = () => {
       const result = await rotationService.bulkForcePasswordChange(userIds);
 
       setOperationResult({
-        success: true,
-        message: `Successfully forced password change for ${result.affected} user(s)`
+        success: result.failed.length === 0,
+        message: `Password change required for ${result.success.length} user(s); ${result.failed.length} failed.`
       });
 
       // Refresh data
@@ -163,13 +166,14 @@ const CredentialRotation = () => {
     setOperationResult(null);
 
     try {
-      const userIds = selectedRows.map(row => row.id);
-      const result = await rotationService.bulkRevokeKeys(userIds);
-
-      setOperationResult({
-        success: true,
-        message: `Successfully revoked keys for ${result.affected} user(s)`
-      });
+      const results = await Promise.allSettled(selectedRows.map(row => {
+        const key = [...expiredKeys, ...expiringKeys].find(item => item.key_id === row.id);
+        if (!key) throw new Error('The selected key is no longer in this report. Refresh and try again.');
+        return userKeyService.revoke(key.user_id, key.key_id);
+      }));
+      const succeeded = results.filter(result => result.status === 'fulfilled').length;
+      const failed = results.length - succeeded;
+      setOperationResult({ success: failed === 0, message: `${succeeded} key(s) revoked; ${failed} failed. Other keys remain unchanged.` });
 
       // Refresh data
       await loadData();
@@ -260,7 +264,7 @@ const CredentialRotation = () => {
           getSelectionProps,
           getTableProps,
           getTableContainerProps,
-          selectRow
+          selectedRows: tableSelectedRows
         }) => (
           <TableContainer title={title} {...getTableContainerProps()}>
             <TableToolbar>
@@ -272,10 +276,10 @@ const CredentialRotation = () => {
                 <Button
                   kind="danger"
                   renderIcon={Renew}
-                  onClick={() => setShowForceChangeModal(true)}
-                  disabled={selectedRows.length === 0}
+                  onClick={() => { setSelectedRows(tableSelectedRows); setShowForceChangeModal(true); }}
+                  disabled={tableSelectedRows.length === 0}
                 >
-                  Force Password Change ({selectedRows.length})
+                  Force Password Change ({tableSelectedRows.length})
                 </Button>
               </TableToolbarContent>
             </TableToolbar>
@@ -300,13 +304,6 @@ const CredentialRotation = () => {
                     <TableRow key={key} {...rowProps}>
                       <TableSelectRow
                         {...getSelectionProps({ row })}
-                        onChange={(checked) => {
-                          if (checked) {
-                            setSelectedRows([...selectedRows, row]);
-                          } else {
-                            setSelectedRows(selectedRows.filter(r => r.id !== row.id));
-                          }
-                        }}
                       />
                       {row.cells.map((cell) => (
                         <TableCell key={cell.id}>{cell.value}</TableCell>
@@ -337,6 +334,7 @@ const CredentialRotation = () => {
       { key: 'username', header: 'Username' },
       { key: 'full_name', header: 'Full Name' },
       { key: 'email', header: 'Email' },
+      { key: 'label', header: 'Device' },
       { key: 'key_fingerprint', header: 'Key Fingerprint' },
       { key: 'key_expires_at', header: 'Expires At' },
       { key: 'days_until_expiry', header: 'Days Until Expiry' },
@@ -344,7 +342,8 @@ const CredentialRotation = () => {
     ];
 
     const rows = filterRows(data).map(item => ({
-      id: item.user_id,
+      id: item.key_id,
+      label: item.label || 'Unnamed device',
       username: item.username,
       full_name: item.full_name,
       email: item.email,
@@ -363,7 +362,8 @@ const CredentialRotation = () => {
           getRowProps,
           getSelectionProps,
           getTableProps,
-          getTableContainerProps
+          getTableContainerProps,
+          selectedRows: tableSelectedRows
         }) => (
           <TableContainer title={title} {...getTableContainerProps()}>
             <TableToolbar>
@@ -375,10 +375,10 @@ const CredentialRotation = () => {
                 <Button
                   kind="danger"
                   renderIcon={TrashCan}
-                  onClick={() => setShowRevokeModal(true)}
-                  disabled={selectedRows.length === 0}
+                  onClick={() => { setSelectedRows(tableSelectedRows); setShowRevokeModal(true); }}
+                  disabled={tableSelectedRows.length === 0}
                 >
-                  Revoke Keys ({selectedRows.length})
+                  Revoke Keys ({tableSelectedRows.length})
                 </Button>
               </TableToolbarContent>
             </TableToolbar>
@@ -403,13 +403,6 @@ const CredentialRotation = () => {
                     <TableRow key={key} {...rowProps}>
                       <TableSelectRow
                         {...getSelectionProps({ row })}
-                        onChange={(checked) => {
-                          if (checked) {
-                            setSelectedRows([...selectedRows, row]);
-                          } else {
-                            setSelectedRows(selectedRows.filter(r => r.id !== row.id));
-                          }
-                        }}
                       />
                       {row.cells.map((cell) => (
                         <TableCell key={cell.id}>{cell.value}</TableCell>
@@ -558,6 +551,11 @@ const CredentialRotation = () => {
 
       {renderUserStatus()}
       {renderSummaryStats()}
+      <Tile>
+        <h4>Accounts without an active key ({expiredCredentials?.users_without_active_key?.length || 0})</h4>
+        <p>These users need to register a key. An expired key on another device does not appear here if an active key remains.</p>
+        <ul>{(expiredCredentials?.users_without_active_key || []).map(account => <li key={account.user_id}>{account.user_name} — {account.user_email}</li>)}</ul>
+      </Tile>
 
       {loading ? (
         <Loading description="Loading credential data..." withOverlay={false} />
@@ -598,7 +596,7 @@ const CredentialRotation = () => {
         primaryButtonText="Force Change"
         secondaryButtonText="Cancel"
         onRequestSubmit={handleForcePasswordChange}
-        onSecondarySubmit={() => setShowForceChangeModal(false)}
+        onSecondarySubmit={() => !operationInProgress && setShowForceChangeModal(false)}
         danger
         primaryButtonDisabled={operationInProgress}
       >
@@ -621,14 +619,13 @@ const CredentialRotation = () => {
         primaryButtonText="Revoke Keys"
         secondaryButtonText="Cancel"
         onRequestSubmit={handleRevokeKeys}
-        onSecondarySubmit={() => setShowRevokeModal(false)}
+        onSecondarySubmit={() => !operationInProgress && setShowRevokeModal(false)}
         danger
         primaryButtonDisabled={operationInProgress}
       >
         <p>
-          Are you sure you want to revoke public keys for {selectedRows.length} user(s)?
-          This will immediately invalidate their keys and prevent them from signing contracts
-          until they register a new key.
+          Revoke the {selectedRows.length} selected device key(s)? Other keys belonging to
+          the same users remain unchanged. A device using a revoked key will lose signing access.
         </p>
         {operationInProgress && (
           <ProgressIndicator>
