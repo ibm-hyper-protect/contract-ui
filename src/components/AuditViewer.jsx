@@ -691,7 +691,7 @@ const AuditViewer = ({ buildId, userRole = 'VIEWER' }) => {
 
       <div className="viewer-header">
         <div className="header-content">
-          <h4>Audit Trail</h4>
+          <h2 className="app-section-heading">Audit trail</h2>
           <div className="header-actions">
             <Toggle
               id="show-hash-chain"

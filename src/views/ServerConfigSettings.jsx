@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   Form,
   TextInput,
@@ -96,123 +97,124 @@ function ServerConfigSettings() {
   };
 
   return (
-    <div className="app-page app-page--narrow app-page--padded">
-      <h2 className="server-config-title">Server Configuration</h2>
-      <p className="server-config-subtitle">
-        Configure the backend server URL for this IBM Confidential Computing Contract UI instance.
-      </p>
+    <div className="app-page app-page--wide">
+      <PageHeader
+        title="Server configuration"
+        description="Configure the backend server used by this application."
+      />
+      <div className="server-config-content">
+        <Tile className="server-config-card">
+          <Form>
+            <Stack gap={6}>
+              <TextInput
+                id="server-url"
+                labelText="Server URL"
+                placeholder="https://192.168.1.100:8443"
+                value={inputUrl}
+                onChange={handleUrlChange}
+                invalid={!!error && !testing}
+                invalidText={error}
+                helperText="Enter the HTTPS URL of your backend server (e.g., https://192.168.1.100:8443 or https://server.example.com:8443)"
+              />
 
-      <Tile className="server-config-card">
-        <Form>
-          <Stack gap={6}>
-            <TextInput
-              id="server-url"
-              labelText="Server URL"
-              placeholder="https://192.168.1.100:8443"
-              value={inputUrl}
-              onChange={handleUrlChange}
-              invalid={!!error && !testing}
-              invalidText={error}
-              helperText="Enter the HTTPS URL of your backend server (e.g., https://192.168.1.100:8443 or https://server.example.com:8443)"
+              <div className="server-config-actions">
+                <Button
+                  kind="secondary"
+                  onClick={testConnection}
+                  disabled={testing || !inputUrl}
+                >
+                  {testing ? (
+                    <>
+                      <Loading small withOverlay={false} className="server-config-button-loader" />
+                      Testing...
+                    </>
+                  ) : (
+                    'Test Connection'
+                  )}
+                </Button>
+                <Button
+                  kind="tertiary"
+                  onClick={handleReset}
+                  disabled={testing}
+                >
+                  Reset to Default
+                </Button>
+              </div>
+            </Stack>
+          </Form>
+
+          {testResult === 'success' && (
+            <InlineNotification
+              kind="success"
+              title="Connection Successful"
+              subtitle="The server is reachable and responding correctly."
+              className="server-config-notification"
+              hideCloseButton
+              lowContrast
             />
+          )}
 
-            <div className="server-config-actions">
-              <Button
-                kind="secondary"
-                onClick={testConnection}
-                disabled={testing || !inputUrl}
-              >
-                {testing ? (
-                  <>
-                    <Loading small withOverlay={false} className="server-config-button-loader" />
-                    Testing...
-                  </>
-                ) : (
-                  'Test Connection'
-                )}
-              </Button>
-              <Button
-                kind="tertiary"
-                onClick={handleReset}
-                disabled={testing}
-              >
-                Reset to Default
-              </Button>
+          {testResult === 'error' && (
+            <InlineNotification
+              kind="error"
+              title="Connection Failed"
+              subtitle={error}
+              className="server-config-notification"
+              hideCloseButton
+              lowContrast
+            />
+          )}
+        </Tile>
+
+        <div className="server-config-footer-actions">
+          <Button
+            kind="primary"
+            onClick={handleSave}
+            disabled={testResult !== 'success'}
+          >
+            Save Configuration
+          </Button>
+        </div>
+
+        <Tile className="server-config-summary">
+          <h2 className="app-section-heading server-config-summary__title">Current configuration</h2>
+          <div className="server-config-summary__content">
+            <div>
+              <strong>Server URL:</strong> {serverUrl}
             </div>
-          </Stack>
-        </Form>
-
-        {testResult === 'success' && (
-          <InlineNotification
-            kind="success"
-            title="Connection Successful"
-            subtitle="The server is reachable and responding correctly."
-            className="server-config-notification"
-            hideCloseButton
-            lowContrast
-          />
-        )}
-
-        {testResult === 'error' && (
-          <InlineNotification
-            kind="error"
-            title="Connection Failed"
-            subtitle={error}
-            className="server-config-notification"
-            hideCloseButton
-            lowContrast
-          />
-        )}
-      </Tile>
-
-      <div className="server-config-footer-actions">
-        <Button
-          kind="primary"
-          onClick={handleSave}
-          disabled={testResult !== 'success'}
-        >
-          Save Configuration
-        </Button>
-      </div>
-
-      <Tile className="server-config-summary">
-        <h4 className="server-config-summary__title">Current Configuration</h4>
-        <div className="server-config-summary__content">
-          <div>
-            <strong>Server URL:</strong> {serverUrl}
-          </div>
-          <div className="server-config-summary__status-row">
-            <strong>Status:</strong>
-            {connectionStatus === 'connected' ? (
-              <span className="server-config-status server-config-status--connected">
-                <Checkmark size={16} /> Connected
-              </span>
-            ) : connectionStatus === 'failed' ? (
-              <span className="server-config-status server-config-status--failed">
-                <Error size={16} /> Failed
-              </span>
-            ) : (
-              <span className="server-config-status server-config-status--unknown">
-                <WarningAlt size={16} /> Unknown
-              </span>
+            <div className="server-config-summary__status-row">
+              <strong>Status:</strong>
+              {connectionStatus === 'connected' ? (
+                <span className="server-config-status server-config-status--connected">
+                  <Checkmark size={16} /> Connected
+                </span>
+              ) : connectionStatus === 'failed' ? (
+                <span className="server-config-status server-config-status--failed">
+                  <Error size={16} /> Failed
+                </span>
+              ) : (
+                <span className="server-config-status server-config-status--unknown">
+                  <WarningAlt size={16} /> Unknown
+                </span>
+              )}
+            </div>
+            {lastConnectionTest && (
+              <div>
+                <strong>Last Test:</strong> {formatDate(lastConnectionTest)}
+              </div>
             )}
           </div>
-          {lastConnectionTest && (
-            <div>
-              <strong>Last Test:</strong> {formatDate(lastConnectionTest)}
-            </div>
-          )}
-        </div>
-      </Tile>
+        </Tile>
 
-      <InlineNotification
-        kind="info"
-        title="Security Notice"
-        subtitle="Only HTTPS connections are allowed. Ensure your server has a valid SSL/TLS certificate."
-        className="server-config-security-note"
-        lowContrast
-        hideCloseButton
-      />
+        <InlineNotification
+          kind="info"
+          title="Security Notice"
+          subtitle="Only HTTPS connections are allowed. Ensure your server has a valid SSL/TLS certificate."
+          className="server-config-security-note"
+          lowContrast
+          hideCloseButton
+        />
+      </div>
     </div>
   );
 }
