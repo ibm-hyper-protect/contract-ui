@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
+  ModalPresence,
   Button,
   InlineNotification,
   ProgressIndicator,
@@ -8,32 +9,34 @@ import {
   TextInput,
   CodeSnippet,
   Tile,
-  Tag
+  Layer,
+  InlineLoading
 } from '@carbon/react';
 import {
   Locked,
   Unlocked,
-  Renew,
-  CheckmarkFilled,
-  WarningAlt,
-  ErrorFilled
+  Renew
 } from '@carbon/icons-react';
 import { useAuthStore } from '../store/authStore';
 import authService from '../services/authService';
 import cryptoService from '../services/cryptoService';
+import { formatDateOnly, formatFingerprint } from '../utils/formatters';
+import { getCredentialExpiry } from '../utils/credentialExpiry';
+import CredentialStatus from './CredentialStatus';
 
 /**
  * PublicKeyManager Component
  * Manages RSA-4096 public key registration, display, and rotation
  * Features: Key generation, registration, expiry display, rotation workflow
  */
-const PublicKeyManager = ({ userId, isAdmin = false }) => {
-  const { user, publicKeyFingerprint, publicKeyExpiry } = useAuthStore();
+const PublicKeyManager = ({ userId }) => {
+  const user = useAuthStore((state) => state.user);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const launcherButtonRef = useRef(null);
 
   // Key generation state
   const [generatedKeyPair, setGeneratedKeyPair] = useState(null);
@@ -41,7 +44,9 @@ const PublicKeyManager = ({ userId, isAdmin = false }) => {
 
   // Key info state
   const [keyInfo, setKeyInfo] = useState(null);
-  const [keyStatus, setKeyStatus] = useState(null);
+  const [keyInfoLoading, setKeyInfoLoading] = useState(true);
+  const [keyLoadError, setKeyLoadError] = useState(null);
+  const keyStatus = getCredentialExpiry(keyInfo?.expires_at);
 
   const targetUserId = userId || user?.id;
   const isCurrentUser = !userId || userId === user?.id;
@@ -53,45 +58,25 @@ const PublicKeyManager = ({ userId, isAdmin = false }) => {
   }, [targetUserId]);
 
   const loadKeyInfo = async () => {
+    setKeyInfoLoading(true);
+    setKeyLoadError(null);
     try {
       const info = isCurrentUser
         ? await authService.getMyPublicKey()
         : await authService.getPublicKey(targetUserId);
       setKeyInfo(info);
-      computeKeyStatus(info);
-    } catch (err) {
-      // Key not registered yet - this is expected for new users
-      // Only log if it's not the "not registered" error
-      if (!err.message?.includes('not registered') && err.status !== 400) {
-        console.error('Error loading key info:', err);
-      }
+    } catch (error) {
       setKeyInfo(null);
-      setKeyStatus({ isExpired: true, daysUntilExpiry: 0, expiresAt: null, fingerprint: null });
+      if (!error.message?.includes('not registered') && error.status !== 400 && error.status !== 404) {
+        setKeyLoadError('Could not load your public key. Try again to check its status.');
+      }
+    } finally {
+      setKeyInfoLoading(false);
     }
-  };
-
-  const computeKeyStatus = (info) => {
-    if (!info || !info.expires_at) {
-      setKeyStatus({ isExpired: true, daysUntilExpiry: 0, expiresAt: null, fingerprint: null });
-      return;
-    }
-    const expiresAt = new Date(info.expires_at);
-    const now = new Date();
-    const daysUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
-    setKeyStatus({
-      isExpired: daysUntilExpiry <= 0,
-      daysUntilExpiry,
-      expiresAt: info.expires_at,
-      fingerprint: info.fingerprint
-    });
-  };
-
-  const checkKeyStatus = async () => {
-    // Status is derived from keyInfo (API response), not the stale auth store.
-    // computeKeyStatus is called inside loadKeyInfo; this is a no-op kept for compatibility.
   };
 
   const handleGenerateKey = async () => {
+    if (loading) return;
     setLoading(true);
     setError(null);
 
@@ -113,6 +98,7 @@ const PublicKeyManager = ({ userId, isAdmin = false }) => {
   };
 
   const handleRegisterKey = async () => {
+    if (loading || !generatedKeyPair || currentStep !== 1) return;
     setLoading(true);
     setError(null);
 
@@ -130,7 +116,6 @@ const PublicKeyManager = ({ userId, isAdmin = false }) => {
 
       // Reload key info
       await loadKeyInfo();
-      await checkKeyStatus();
 
       // Close modal after 2 seconds
       setTimeout(() => {
@@ -158,218 +143,198 @@ const PublicKeyManager = ({ userId, isAdmin = false }) => {
   };
 
   const handleCloseModal = () => {
+    if (loading) return;
     setIsModalOpen(false);
     resetModal();
   };
 
-  const getKeyStatusTag = () => {
-    if (!keyStatus) return null;
-
-    if (keyStatus.isExpired) {
-      return <Tag type="red" renderIcon={ErrorFilled}>Expired</Tag>;
-    } else if (keyStatus.daysUntilExpiry <= 7) {
-      return <Tag type="yellow" renderIcon={WarningAlt}>Expiring Soon</Tag>;
-    } else {
-      return <Tag type="green" renderIcon={CheckmarkFilled}>Active</Tag>;
-    }
-  };
-
-  const formatFingerprint = (fingerprint) => {
-    if (!fingerprint) return 'N/A';
-    // If already formatted with colons, return as-is
-    if (fingerprint.includes(':')) return fingerprint;
-    // Format plain hex as XX:XX:XX:...
-    return fingerprint.match(/.{1,2}/g)?.join(':') || fingerprint;
-  };
-
   return (
     <div className="public-key-manager">
-      <Tile className="public-key-manager__tile">
-        <div className="public-key-manager__header">
-          <h4>
-            {keyInfo ? <Locked size={20} /> : <Unlocked size={20} />}
-            {' '}Public Key Status
-          </h4>
-          {getKeyStatusTag()}
-        </div>
+      <Tile className="account-credential-panel public-key-manager__tile">
+        <header className="account-credential-panel__header">
+          <h2 className="account-credential-panel__title">
+            {keyInfo ? <Locked size={20} aria-hidden="true" /> : <Unlocked size={20} aria-hidden="true" />}
+            Public key
+          </h2>
+          {!keyInfoLoading && !keyLoadError && (
+            <CredentialStatus registered={Boolean(keyInfo)} expiresAt={keyInfo?.expires_at} />
+          )}
+        </header>
+        <p className="account-credential-panel__description">Manage the signing key linked to your account.</p>
 
-        {keyInfo ? (
+        {keyInfoLoading ? (
+          <InlineLoading description="Loading public key…" />
+        ) : keyLoadError ? (
           <div className="public-key-manager__details">
-            <div className="public-key-manager__detail-row public-key-manager__detail-row--fingerprint">
-              <span className="public-key-manager__label">Fingerprint:</span>
-              <CodeSnippet
-                type="single"
-                feedback="Copied to clipboard"
-                className="public-key-manager__fingerprint-snippet"
-              >
-                {formatFingerprint(keyInfo.fingerprint)}
-              </CodeSnippet>
-            </div>
-
-            <div className="public-key-manager__detail-row">
-              <span className="public-key-manager__label">Registered:</span>
-              <span>{new Date(keyInfo.created_at).toLocaleDateString()}</span>
-            </div>
-
-            <div className="public-key-manager__detail-row">
-              <span className="public-key-manager__label">Expires:</span>
-              <span>
-                {new Date(keyInfo.expires_at).toLocaleDateString()}
-                {keyStatus && (
-                  <span className="public-key-manager__expiry">
-                    {' '}({keyStatus.daysUntilExpiry} days remaining)
-                  </span>
-                )}
-              </span>
-            </div>
-
-            {keyStatus?.isExpired && (
-              <InlineNotification
-                kind="error"
-                title="Key Expired"
-                subtitle="Your public key has expired. Please register a new key to continue operations."
-                lowContrast
-              />
-            )}
-
-            {keyStatus && keyStatus.daysUntilExpiry <= 7 && !keyStatus.isExpired && (
-              <InlineNotification
-                kind="warning"
-                title="Key Expiring Soon"
-                subtitle={`Your public key will expire in ${keyStatus.daysUntilExpiry} days. Consider rotating your key.`}
-                lowContrast
-              />
-            )}
-
-            <Button
-              kind="tertiary"
-              renderIcon={Renew}
-              onClick={handleOpenModal}
-              className="public-key-manager__rotate-button"
-            >
-              Rotate Key
-            </Button>
+            <InlineNotification kind="error" title="Public key unavailable" subtitle={keyLoadError} lowContrast hideCloseButton className="account-credential-panel__notification" />
+            <Button kind="tertiary" renderIcon={Renew} onClick={loadKeyInfo}>Retry</Button>
           </div>
-        ) : (
-          <div className="public-key-manager__empty">
-            <InlineNotification
-              kind="warning"
-              title="No Public Key Registered"
-              subtitle="You must register a public key to perform cryptographic operations."
-              lowContrast
-            />
+        ) : keyInfo ? (
+          <Layer>
+            <div className="public-key-manager__details">
+              <div>
+                <h3 className="public-key-manager__label">Fingerprint</h3>
+                <CodeSnippet
+                  type="multi"
+                  wrapText
+                  minCollapsedNumberOfRows={2}
+                  maxCollapsedNumberOfRows={6}
+                  aria-label="Public key fingerprint"
+                  copyButtonDescription="Copy fingerprint"
+                  feedback="Fingerprint copied"
+                  className="public-key-manager__fingerprint-snippet"
+                >
+                  {formatFingerprint(keyInfo.fingerprint)}
+                </CodeSnippet>
+              </div>
 
-            <Button
-              kind="primary"
-              renderIcon={Locked}
-              onClick={handleOpenModal}
-            >
-              Register Public Key
-            </Button>
+              <dl className="account-credential-details account-credential-details--key">
+                <div><dt>Registered</dt><dd>{formatDateOnly(keyInfo.created_at)}</dd></div>
+                <div>
+                  <dt>Expires</dt>
+                  <dd>{formatDateOnly(keyInfo.expires_at)}<span className="account-credential-details__hint">{keyStatus.description}</span></dd>
+                </div>
+              </dl>
+
+              {keyStatus.isExpired && (
+                <InlineNotification
+                  kind="error"
+                  title="Public key expired"
+                  subtitle="Rotate your key to continue signing requests."
+                  lowContrast
+                  hideCloseButton
+                  className="account-credential-panel__notification"
+                />
+              )}
+              {keyStatus.daysRemaining != null && keyStatus.daysRemaining <= 14 && !keyStatus.isExpired && (
+                <InlineNotification
+                  kind="warning"
+                  title="Public key expires soon"
+                  subtitle="Rotate your key before it expires to keep your account ready to use."
+                  lowContrast
+                  hideCloseButton
+                  className="account-credential-panel__notification"
+                />
+              )}
+              <div className="account-credential-panel__actions">
+                <Button ref={launcherButtonRef} kind="tertiary" renderIcon={Renew} onClick={handleOpenModal}>Rotate key</Button>
+              </div>
+            </div>
+          </Layer>
+        ) : (
+          <div className="public-key-manager__details">
+            <InlineNotification
+              kind="info"
+              title="Register your public key"
+              subtitle="Add a signing key to complete your account setup."
+              lowContrast
+              hideCloseButton
+              className="account-credential-panel__notification"
+            />
+            <div className="account-credential-panel__actions">
+              <Button ref={launcherButtonRef} kind="tertiary" renderIcon={Locked} onClick={handleOpenModal}>Register public key</Button>
+            </div>
           </div>
         )}
       </Tile>
 
-      <Modal
-        open={isModalOpen}
-        onRequestClose={handleCloseModal}
-        modalHeading={keyInfo ? "Rotate Public Key" : "Register Public Key"}
-        modalLabel="RSA-4096 Key Management"
-        primaryButtonText={currentStep === 1 ? "Register Key" : "Generate Key"}
-        secondaryButtonText="Cancel"
-        onRequestSubmit={currentStep === 0 ? handleGenerateKey : handleRegisterKey}
-        onSecondarySubmit={handleCloseModal}
-        primaryButtonDisabled={loading || currentStep === 2}
-        size="md"
-      >
-        <ProgressIndicator currentIndex={currentStep} spaceEqually>
-          <ProgressStep
-            label="Generate Key Pair"
-            description="Create RSA-4096 key pair"
-          />
-          <ProgressStep
-            label="Register Public Key"
-            description="Store and register key"
-          />
-          <ProgressStep
-            label="Complete"
-            description="Key registered successfully"
-          />
-        </ProgressIndicator>
-
-        <div className="public-key-manager__modal-content">
-          {error && (
-            <InlineNotification
-              kind="error"
-              title="Error"
-              subtitle={error}
-              onCloseButtonClick={() => setError(null)}
-              lowContrast
+      <ModalPresence open={isModalOpen}>
+        <Modal
+          className="account-key-modal"
+          open={isModalOpen}
+          launcherButtonRef={launcherButtonRef}
+          selectorPrimaryFocus=".cds--btn--secondary"
+          onRequestClose={handleCloseModal}
+          modalHeading={keyInfo ? 'Rotate public key' : 'Register public key'}
+          primaryButtonText={currentStep === 1 ? 'Register key' : 'Generate key pair'}
+          secondaryButtonText="Cancel"
+          onRequestSubmit={currentStep === 0 ? handleGenerateKey : handleRegisterKey}
+          onSecondarySubmit={handleCloseModal}
+          primaryButtonDisabled={loading || currentStep === 2}
+          loadingStatus={loading ? 'active' : 'inactive'}
+          loadingDescription={currentStep === 0 ? 'Generating key pair…' : 'Registering public key…'}
+          size="md"
+        >
+          <ProgressIndicator currentIndex={currentStep} spaceEqually>
+            <ProgressStep
+              label="Generate key pair"
+              description="Create RSA-4096 key pair"
             />
-          )}
-
-          {success && (
-            <InlineNotification
-              kind="success"
-              title="Success"
-              subtitle={success}
-              lowContrast
+            <ProgressStep
+              label="Register public key"
+              description="Store and register key"
             />
-          )}
+            <ProgressStep
+              label="Complete"
+              description="Key registered successfully"
+            />
+          </ProgressIndicator>
 
-          {currentStep === 0 && (
-            <div className="public-key-manager__step-content">
-              <p>
-                This will generate a new RSA-4096 key pair for cryptographic operations.
-                The private key will be stored securely on your device, and the public key
-                will be registered with the server.
-              </p>
+          <div className="public-key-manager__modal-content">
+            {error && (
+              <InlineNotification
+                kind="error"
+                title="Error"
+                subtitle={error}
+                onCloseButtonClick={() => setError(null)}
+                lowContrast
+              />
+            )}
 
-              {keyInfo && (
+            {currentStep === 0 && (
+              <div className="public-key-manager__step-content">
+                <p>
+                  This will generate a new RSA-4096 key pair for cryptographic operations.
+                  The private key will be stored securely on your device, and the public key
+                  will be registered with the server.
+                </p>
+
+                {keyInfo && (
+                  <InlineNotification
+                    kind="info"
+                    title="Key rotation"
+                    subtitle="Your existing key will be replaced. All future operations will use the new key."
+                    lowContrast
+                  />
+                )}
+              </div>
+            )}
+
+            {currentStep === 1 && generatedKeyPair && (
+              <div className="public-key-manager__step-content">
+                <p>Key pair generated successfully!</p>
+
+                <div className="public-key-manager__key-info-display">
+                  <TextInput
+                    id="fingerprint"
+                    labelText="Public key fingerprint"
+                    value={formatFingerprint(keyFingerprint)}
+                    readOnly
+                  />
+
+                  <InlineNotification
+                    kind="info"
+                    title="Secure storage"
+                    subtitle="Your private key will be stored securely in your system's keychain. Never share your private key."
+                    lowContrast
+                  />
+                </div>
+              </div>
+            )}
+
+            {currentStep === 2 && (
+              <div className="public-key-manager__step-content">
                 <InlineNotification
-                  kind="info"
-                  title="Key Rotation"
-                  subtitle="Your existing key will be replaced. All future operations will use the new key."
-                  lowContrast
-                />
-              )}
-            </div>
-          )}
-
-          {currentStep === 1 && generatedKeyPair && (
-            <div className="public-key-manager__step-content">
-              <p>Key pair generated successfully!</p>
-
-              <div className="public-key-manager__key-info-display">
-                <TextInput
-                  id="fingerprint"
-                  labelText="Public Key Fingerprint"
-                  value={formatFingerprint(keyFingerprint)}
-                  readOnly
-                />
-
-                <InlineNotification
-                  kind="info"
-                  title="Secure Storage"
-                  subtitle="Your private key will be stored securely in your system's keychain. Never share your private key."
+                  kind="success"
+                  title="Public key registered"
+                  subtitle={success || 'Your public key is ready to use.'}
                   lowContrast
                 />
               </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="public-key-manager__step-content">
-              <InlineNotification
-                kind="success"
-                title="Registration Complete"
-                subtitle="Your public key has been registered successfully. You can now perform cryptographic operations."
-                lowContrast
-              />
-            </div>
-          )}
-        </div>
-      </Modal>
+            )}
+          </div>
+        </Modal>
+      </ModalPresence>
     </div>
   );
 };

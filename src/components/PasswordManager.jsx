@@ -1,130 +1,133 @@
-import React, { useState } from 'react';
-import {
-  Tile,
-  FormGroup,
-  PasswordInput,
-  Button,
-  InlineNotification
-} from '@carbon/react';
+import React, { useRef, useState } from 'react';
+import { Tile, Layer, Stack, PasswordInput, Button, InlineLoading, InlineNotification } from '@carbon/react';
+import { Locked } from '@carbon/icons-react';
 import authService from '../services/authService';
+import { useAuthStore } from '../store/authStore';
+import { formatDateOnly } from '../utils/formatters';
+import { getCredentialExpiry } from '../utils/credentialExpiry';
+import CredentialStatus from './CredentialStatus';
 import { PasswordStrengthMeter, isPasswordValid } from './PasswordStrengthMeter';
 
-const MIN_PASSWORD_LENGTH = 12;
-
-const PasswordManager = () => {
+const PasswordManager = ({ requiresUpdate = false }) => {
+  const user = useAuthStore((state) => state.user);
+  const lastPasswordChange = useAuthStore((state) => state.lastPasswordChange || state.user?.password_changed_at);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmTouched, setConfirmTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const submitting = useRef(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const changedAt = lastPasswordChange ? new Date(lastPasswordChange) : null;
+  const fallbackExpiry = changedAt && Number.isFinite(changedAt.getTime())
+    ? new Date(changedAt.getTime()) : null;
+  fallbackExpiry?.setDate(fallbackExpiry.getDate() + 90);
+  const expiresAt = user?.password_expires_at || fallbackExpiry?.toISOString();
+  const expiry = getCredentialExpiry(expiresAt);
+  const passwordMismatch = confirmTouched && confirmPassword !== newPassword;
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (submitting.current) return;
     setNotification(null);
+    setConfirmTouched(true);
 
-    if (newPassword !== confirmPassword) {
-      setNotification({
-        kind: 'error',
-        title: 'Validation Error',
-        subtitle: 'New passwords do not match.'
-      });
-      return;
-    }
+    if (newPassword !== confirmPassword || !isPasswordValid(newPassword)) return;
 
-    if (!isPasswordValid(newPassword)) {
-      setNotification({
-        kind: 'error',
-        title: 'Validation Error',
-        subtitle: 'Password does not meet all security requirements.'
-      });
-      return;
-    }
-
+    submitting.current = true;
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      // Wait, endpoint takes old_password? 
-      // The backend Go code (ChangePassword handler) only looks at req.NewPassword.
-      // But the frontend authService passes oldPassword and newPassword.
       await authService.changePassword(currentPassword, newPassword);
-      
-      setNotification({
-        kind: 'success',
-        title: 'Success',
-        subtitle: 'Your password has been changed successfully.'
-      });
-      
-      // Clear form
+      setNotification({ kind: 'success', title: 'Password changed', subtitle: 'Use your new password the next time you sign in.' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      
-    } catch (err) {
-      setNotification({
-        kind: 'error',
-        title: 'Error',
-        subtitle: err.message || 'Failed to change password. Please try again.'
-      });
+      setConfirmTouched(false);
+    } catch (error) {
+      setNotification({ kind: 'error', title: 'Could not change password', subtitle: error.message || 'Try again. Your existing password is still in use.' });
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Tile className="password-manager__tile">
-      <div className="password-manager-header">
-        <h3>Change Password</h3>
-        <p className="password-manager-subtitle">
-          Update your account password securely.
-        </p>
-      </div>
+    <Tile className="account-credential-panel password-manager__tile">
+      <header className="account-credential-panel__header">
+        <h2 className="account-credential-panel__title"><Locked size={20} aria-hidden="true" />Password</h2>
+        <CredentialStatus expiresAt={expiresAt} requiresUpdate={requiresUpdate} />
+      </header>
+      <p className="account-credential-panel__description">Update the password you use to sign in.</p>
 
-      {notification && (
-        <InlineNotification
-          kind={notification.kind}
-          title={notification.title}
-          subtitle={notification.subtitle}
-          onClose={() => setNotification(null)}
-          className="password-manager-notification"
-        />
-      )}
+      <dl className="account-credential-details">
+        <div><dt>Last changed</dt><dd>{formatDateOnly(lastPasswordChange)}</dd></div>
+        <div>
+          <dt>Expires</dt>
+          <dd>{formatDateOnly(expiresAt)}<span className="account-credential-details__hint">{expiry.description}</span></dd>
+        </div>
+      </dl>
 
-      <form onSubmit={handleSubmit}>
-        <FormGroup legendText="">
-          <PasswordInput
-            id="current-password"
-            labelText="Current Password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            className="password-manager-field"
-          />
-          <div>
+      <Layer>
+        <form onSubmit={handleSubmit} aria-label="Change password" aria-busy={isSubmitting}>
+          <Stack gap={5}>
             <PasswordInput
-              id="new-password"
-              labelText="New Password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              id="current-password"
+              name="current-password"
+              labelText="Current password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              disabled={isSubmitting}
               required
-              className="password-manager-field"
             />
-            <PasswordStrengthMeter password={newPassword} showCriteria={true} />
-          </div>
-          <PasswordInput
-            id="confirm-password"
-            labelText="Confirm New Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            className="password-manager-field password-manager-field--last"
-          />
-          <Button
-            type="submit"
-            disabled={isSubmitting || !currentPassword || !newPassword || !confirmPassword || !isPasswordValid(newPassword)}
-          >
-            {isSubmitting ? 'Updating...' : 'Update Password'}
-          </Button>
-        </FormGroup>
-      </form>
+            <div>
+              <PasswordInput
+                id="new-password"
+                name="new-password"
+                labelText="New password"
+                autoComplete="new-password"
+                helperText="Use at least 12 characters, with uppercase and lowercase letters, a number, and a special character (@$!%*?&)."
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                minLength={12}
+                disabled={isSubmitting}
+                required
+              />
+              <PasswordStrengthMeter password={newPassword} showCriteria={false} />
+            </div>
+            <PasswordInput
+              id="confirm-password"
+              name="confirm-password"
+              labelText="Confirm new password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              onBlur={() => setConfirmTouched(true)}
+              invalid={passwordMismatch}
+              invalidText="Passwords do not match. Enter your new password again."
+              disabled={isSubmitting}
+              required
+            />
+            {notification && (
+              <InlineNotification
+                kind={notification.kind}
+                title={notification.title}
+                subtitle={notification.subtitle}
+                lowContrast
+                onCloseButtonClick={() => setNotification(null)}
+                className="account-credential-panel__notification"
+              />
+            )}
+            <div className="account-credential-panel__actions">
+              <Button type="submit" kind="primary" disabled={isSubmitting || !currentPassword || !isPasswordValid(newPassword) || newPassword !== confirmPassword}>
+                Change password
+              </Button>
+              {isSubmitting && <InlineLoading description="Updating password…" />}
+            </div>
+          </Stack>
+        </form>
+      </Layer>
     </Tile>
   );
 };

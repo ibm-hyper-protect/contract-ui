@@ -55,6 +55,15 @@ class AuthService {
     const requiresSetup = response.data?.requires_setup ?? (pending.length > 0);
     const mustChangePassword = response.data?.must_change_password ?? pending.includes('password_change');
 
+    const changedAt = response.data?.password_changed_at || new Date().toISOString();
+    const defaultExpiry = new Date(changedAt);
+    defaultExpiry.setDate(defaultExpiry.getDate() + 90);
+    store.updateUser({
+      password_changed_at: changedAt,
+      password_expires_at: response.data?.password_expires_at || defaultExpiry.toISOString(),
+    });
+    useAuthStore.setState({ lastPasswordChange: changedAt });
+
     // Sync setup flags from backend response to avoid stale warning banners.
     store.setMustChangePassword(!!mustChangePassword);
     store.setSetupState({ requiresSetup, setupPending: pending });
