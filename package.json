@@ -39,7 +39,7 @@
   "license": "Apache-2.0",
   "engines": {
     "node": ">=25.9.0",
-    "npm": ">=12.2.0"
+    "npm": ">=12.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.2",
@@ -51,17 +51,17 @@
     "wait-on": "^9.5.1"
   },
   "dependencies": {
-    "@carbon/charts": "^1.27.21",
-    "@carbon/charts-react": "^1.27.21",
-    "@carbon/icons-react": "^11.90.0",
-    "@carbon/react": "^1.118.0",
+    "@carbon/charts": "^1.27.22",
+    "@carbon/charts-react": "^1.27.22",
+    "@carbon/icons-react": "^11.91.0",
+    "@carbon/react": "^1.119.0",
     "axios": "^1.20.0",
     "d3": "^7.9.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4",
-    "sass": "^1.105.2",
-    "zustand": "^5.0.15"
+    "sass": "^1.106.1",
+    "zustand": "^5.0.16"
   },
   "allowScripts": {
     "electron@44.7.2": true
