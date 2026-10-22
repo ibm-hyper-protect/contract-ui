@@ -7,11 +7,14 @@ import {
   TableRow,
   TableHeader,
   TableBody,
+  TableToolbar,        
+  TableToolbarContent,
   TableCell,
   Button,
   Modal,
   InlineNotification,
   Tag,
+  Tile
 } from '@carbon/react';
 import {
   UserMultiple,
@@ -23,7 +26,7 @@ import assignmentService from '../services/assignmentService';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
 import { formatDate } from '../utils/formatters';
-
+import { useAuthStore } from '../store/authStore';
 /**
  * BuildAssignments Component
  * Manages user-to-build-to-role assignments for two-layer access control
@@ -38,7 +41,7 @@ const BuildAssignments = ({ buildId, buildStatus, userRole, onStatusUpdate }) =>
   const [success, setSuccess] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-
+  const currentUser = useAuthStore((state) => state.user);
   const canManageBuilds = userRole === 'ADMIN' || userRole === 'AUDITOR';
   const normalizedBuildStatus = String(buildStatus || '').toUpperCase();
   const canCancelBuild = canManageBuilds && !['FINALIZED', 'CONTRACT_DOWNLOADED', 'CANCELLED'].includes(normalizedBuildStatus);
@@ -152,7 +155,7 @@ const BuildAssignments = ({ buildId, buildStatus, userRole, onStatusUpdate }) =>
       AUDITOR: 0,
       ENV_OPERATOR: 0
     };
-
+    console.log(assignments)
     assignments.forEach(a => {
       const role = a.role_name;
       if (summary.hasOwnProperty(role)) {
@@ -173,6 +176,13 @@ const BuildAssignments = ({ buildId, buildStatus, userRole, onStatusUpdate }) =>
 
   const roleOrder = ['ADMIN', 'AUDITOR', 'SOLUTION_PROVIDER', 'DATA_OWNER', 'ENV_OPERATOR', 'VIEWER'];
 
+
+  const isCurrentUser = (assignment) =>
+    !!currentUser?.email &&
+    assignment.user_email?.toLowerCase() === currentUser.email.toLowerCase()
+    
+
+
   const rows = assignments
     .slice()
     .sort((a, b) => {
@@ -182,7 +192,12 @@ const BuildAssignments = ({ buildId, buildStatus, userRole, onStatusUpdate }) =>
     })
     .map((assignment, index) => ({
     id: `${assignment.user_id}-${assignment.role_name}-${index}`,
-    user_name: assignment.user_name,
+    user_name: (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+        {assignment.user_name}
+        {isCurrentUser(assignment) && <Tag type="blue" size="sm">You</Tag>}
+      </span>
+    ),
     user_email: assignment.user_email,
     persona_role: getRoleTag(assignment.role_name),
     status: getAssignmentStatus(assignment),
@@ -216,55 +231,47 @@ const BuildAssignments = ({ buildId, buildStatus, userRole, onStatusUpdate }) =>
       )}
 
 
-      <div className="build-assignments__summary">
-        <div className="build-assignments__summary-item">
-          <UserMultiple size={20} />
-          <span className="build-assignments__summary-label">Total Assignments:</span>
-          <span className="build-assignments__summary-value">{assignments.length}</span>
-        </div>
-        <div className="build-assignments__summary-item">
-          <span className="build-assignments__summary-label">Auditors:</span>
-          <span className="build-assignments__summary-value">{summary.AUDITOR}</span>
-        </div>
-        <div className="build-assignments__summary-item">
-          <span className="build-assignments__summary-label">Solution Providers:</span>
-          <span className="build-assignments__summary-value">{summary.SOLUTION_PROVIDER}</span>
-        </div>
-        <div className="build-assignments__summary-item">
-          <span className="build-assignments__summary-label">Data Owners:</span>
-          <span className="build-assignments__summary-value">{summary.DATA_OWNER}</span>
-        </div>
-        <div className="build-assignments__summary-item">
-          <span className="build-assignments__summary-label">Env Operators:</span>
-          <span className="build-assignments__summary-value">{summary.ENV_OPERATOR}</span>
-        </div>
-      </div>
-
-      <div className="build-assignments__actions">
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Renew}
-          onClick={loadAssignments}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
-        {canManageBuilds && (
-          <Button
-            kind="danger--tertiary"
-            size="md"
-            onClick={() => setShowCancelModal(true)}
-            disabled={!canCancelBuild || cancelling}
-          >
-            Cancel Build
-          </Button>
-        )}
-      </div>
-
-      <DataTable rows={rows} headers={headers}>
+       <DataTable rows={rows} headers={headers}>
         {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
-          <TableContainer title="Build Assignments" description="User-to-role assignments for this build">
+          <TableContainer
+            title={`Build Assignments (${assignments.length})`} description="User-to-role assignments for this build">
+            <TableToolbar>
+              <TableToolbarContent>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap',width: '100%' }}>
+                {}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--cds-text-secondary)' }}>{``}</span>
+                  <Tag type="purple" size="sm">Auditors: {summary.AUDITOR}</Tag>
+                  <Tag type="blue" size="sm">Solution Providers: {summary.SOLUTION_PROVIDER}</Tag>
+                  <Tag type="green" size="sm">Data Owners: {summary.DATA_OWNER}</Tag>
+                  <Tag type="teal" size="sm">Env Operators: {summary.ENV_OPERATOR}</Tag>
+                </div>
+                {}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Renew}
+                    onClick={loadAssignments}
+                    disabled={loading}
+                  >
+                    Refresh
+                  </Button>
+                  {canManageBuilds && (
+                    <Button
+                      kind="danger--tertiary"
+                      size="sm"
+                      onClick={() => setShowCancelModal(true)}
+                      disabled={!canCancelBuild || cancelling}
+                    >
+                      Cancel Build
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </TableToolbarContent>
+            </TableToolbar>
+          
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
