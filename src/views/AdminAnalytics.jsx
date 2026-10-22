@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import { DonutChart, GroupedBarChart } from '@carbon/charts-react';
 import {
   Grid,
@@ -240,14 +241,27 @@ const AdminAnalytics = () => {
   const activeUsers = useMemo(() => users.filter((u) => u.is_active).length, [users]);
   const disabledUsers = useMemo(() => users.filter((u) => !u.is_active).length, [users]);
 
+  const pageHeader = (
+    <PageHeader
+      title="Admin diagnostics & analytics"
+      description="Monitor builds, users, and credential health."
+    />
+  );
+
   // Render loading/error states after all hooks to preserve stable hook order.
   if (loading) {
-    return <FullPageLoader description="Loading analytics..." />;
+    return (
+      <div className="app-page app-page--wide">
+        {pageHeader}
+        <FullPageLoader description="Loading analytics..." />
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="app-page app-page--wide app-page--padded">
+      <div className="app-page app-page--wide">
+        {pageHeader}
         <ErrorStatePanel
           title="Failed to Load Analytics"
           description={error}
@@ -258,10 +272,8 @@ const AdminAnalytics = () => {
   }
 
   return (
-    <div className="app-page app-page--wide app-page--padded">
-      <div className="app-page__header">
-        <h1 className="app-page__title admin-analytics-title">Admin Diagnostics & Analytics</h1>
-      </div>
+    <div className="app-page app-page--wide">
+      {pageHeader}
       
       <Tabs selectedIndex={selectedTab} onChange={(e) => setSelectedTab(e.selectedIndex)}>
         <TabList aria-label="Admin analytics tabs" contained>
@@ -290,25 +302,25 @@ const AdminAnalytics = () => {
                 <Column lg={4}>
                   <Tile className="analytics-kpi-tile">
                     <h3 className="analytics-kpi-title">Total Users</h3>
-                    <h1 className="analytics-kpi-value">{users.length}</h1>
+                    <p className="analytics-kpi-value">{users.length}</p>
                   </Tile>
                 </Column>
                 <Column lg={4}>
                   <Tile className="analytics-kpi-tile">
                     <h3 className="analytics-kpi-title">Active Builds</h3>
-                    <h1 className="analytics-kpi-value">{activeBuilds}</h1>
+                    <p className="analytics-kpi-value">{activeBuilds}</p>
                   </Tile>
                 </Column>
                 <Column lg={4}>
                   <Tile className="analytics-kpi-tile">
                     <h3 className="analytics-kpi-title">Completed Contracts</h3>
-                    <h1 className="analytics-kpi-value">{completedContracts}</h1>
+                    <p className="analytics-kpi-value">{completedContracts}</p>
                   </Tile>
                 </Column>
                 <Column lg={4}>
                   <Tile className="analytics-kpi-tile">
                     <h3 className="analytics-kpi-title">Total Builds</h3>
-                    <h1 className="analytics-kpi-value">{builds.length}</h1>
+                    <p className="analytics-kpi-value">{builds.length}</p>
                   </Tile>
                 </Column>
               </Grid>
@@ -318,14 +330,14 @@ const AdminAnalytics = () => {
                 <Column lg={4}>
                   <Tile className="analytics-kpi-tile analytics-kpi-tile--ok">
                     <h3 className="analytics-kpi-title">Active Users</h3>
-                    <h1 className="analytics-kpi-value">{activeUsers}</h1>
+                    <p className="analytics-kpi-value">{activeUsers}</p>
                     <p className="analytics-kpi-caption">Accounts currently enabled.</p>
                   </Tile>
                 </Column>
                 <Column lg={4}>
                   <Tile className={`analytics-kpi-tile ${disabledUsers > 0 ? 'analytics-kpi-tile--danger' : 'analytics-kpi-tile--ok'}`}>
                     <h3 className="analytics-kpi-title">Disabled Users</h3>
-                    <h1 className="analytics-kpi-value">{disabledUsers}</h1>
+                    <p className="analytics-kpi-value">{disabledUsers}</p>
                     <p className="analytics-kpi-caption">
                       {disabledUsers > 0 ? 'Review and reactivate if needed.' : 'No disabled accounts.'}
                     </p>
@@ -337,7 +349,7 @@ const AdminAnalytics = () => {
                       {expiredKeys > 0 ? <WarningAlt size={32} /> : <Locked size={32} />}
                       <div>
                         <h3 className="analytics-kpi-title">Expired Public Keys</h3>
-                        <h1 className="analytics-kpi-value admin-analytics-security-value">{expiredKeys}</h1>
+                        <p className="analytics-kpi-value admin-analytics-security-value">{expiredKeys}</p>
                         <p className="analytics-kpi-caption">
                           {expiredKeys > 0
                             ? 'Action required: renew user keys.'
@@ -353,7 +365,7 @@ const AdminAnalytics = () => {
                       {expiredPasswords > 0 ? <Unlocked size={32} /> : <Locked size={32} />}
                       <div>
                         <h3 className="analytics-kpi-title">Expired Passwords</h3>
-                        <h1 className="analytics-kpi-value admin-analytics-security-value">{expiredPasswords}</h1>
+                        <p className="analytics-kpi-value admin-analytics-security-value">{expiredPasswords}</p>
                         <p className="analytics-kpi-caption">
                           {expiredPasswords > 0
                             ? 'Action required: users must change passwords.'

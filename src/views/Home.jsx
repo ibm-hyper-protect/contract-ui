@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   Grid,
   Column,
@@ -283,15 +284,11 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
   }, []);
 
   return (
-    <div className="app-page home-page">
-      <div className="app-page__header">
-        <div>
-          <h1 className="app-page__title">Welcome, {currentUser.name}</h1>
-          <p className="app-page__subtitle">
-            {currentUser.email} • {getRoleLabel(userRole)}
-          </p>
-        </div>
-        <div className="app-page__actions">
+    <div className="app-page app-page--wide home-page">
+      <PageHeader
+        title={`Welcome, ${currentUser.name}`}
+        description={<>{currentUser.email} • {getRoleLabel(userRole)}</>}
+        actions={(
           <Button
             kind="tertiary"
             size="md"
@@ -301,8 +298,8 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
           >
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-        </div>
-      </div>
+        )}
+      />
 
       <h2 className="app-section-title">Account Overview</h2>
 

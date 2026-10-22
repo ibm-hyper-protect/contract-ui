@@ -291,7 +291,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
 
   return (
     <div>
-      <h3 className="workflow-title">{pageTitle}</h3>
+      <h2 className="workflow-title">{pageTitle}</h2>
       <p className="workflow-description">
         {pageDescription}
       </p>

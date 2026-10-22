@@ -544,7 +544,7 @@ const CredentialRotation = () => {
       )}
 
       <div className="rotation-header">
-        <h3>Credential Rotation Management</h3>
+        <h2 className="app-section-heading">Credential rotation management</h2>
         <Button
           kind="tertiary"
           size="md"

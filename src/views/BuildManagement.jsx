@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   DataTable,
   Table,
@@ -677,7 +678,36 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
   }, []);
 
   return (
-    <div className="app-page">
+    <div className="app-page app-page--wide">
+      <PageHeader
+        title="Build management"
+        description="Create and manage confidential computing contract builds."
+        actions={(
+          <>
+            <Button
+              kind="tertiary"
+              size="md"
+              renderIcon={Renew}
+              iconDescription="Refresh"
+              disabled={refreshing}
+              onClick={handleRefresh}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            {canManageBuilds && (
+              <Button
+                renderIcon={Add}
+                size="md"
+                disabled={isSetupRequired || creating}
+                onClick={() => setCreateModalOpen(true)}
+              >
+                {isSetupRequired ? 'Complete Setup First' : 'Create New Build'}
+              </Button>
+            )}
+          </>
+        )}
+      />
+
       {notification && (
         <InlineNotification
           kind={notification.kind}
@@ -688,31 +718,6 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
           onCloseButtonClick={() => setNotification(null)}
         />
       )}
-
-      <div className="app-page__header">
-        <h1 className="app-page__title">Build Management</h1>
-        <div className="app-page__actions">
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Renew}
-            iconDescription="Refresh"
-            disabled={refreshing}
-            onClick={handleRefresh}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-          {canManageBuilds && (
-            <Button
-              renderIcon={Add}
-              disabled={isSetupRequired || creating}
-              onClick={() => setCreateModalOpen(true)}
-            >
-              {isSetupRequired ? 'Complete Setup First' : 'Create New Build'}
-            </Button>
-          )}
-        </div>
-      </div>
 
       {isSetupRequired && (
         <div className="build-management-setup-alert">

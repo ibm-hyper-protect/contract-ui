@@ -133,7 +133,7 @@ const FinaliseContract = ({ buildId, buildStatus: buildStatusProp, onStatusUpdat
 
   return (
     <div>
-      <h3 className="workflow-title">Finalise contract</h3>
+      <h2 className="workflow-title">Finalise contract</h2>
       <p className="workflow-description">
         Finalize the build using backend-native contract assembly via <code>POST /builds/{'{id}'}/v2/finalize</code>.
       </p>

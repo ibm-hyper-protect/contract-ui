@@ -3,6 +3,7 @@ import { Grid, Column, InlineNotification } from '@carbon/react';
 import { useAuthStore } from '../store/authStore';
 import PublicKeyManager from '../components/PublicKeyManager';
 import PasswordManager from '../components/PasswordManager';
+import PageHeader from '../components/PageHeader';
 
 const AccountSettings = () => {
   const { user, isSetupRequired, getSetupPending } = useAuthStore();
@@ -14,10 +15,10 @@ const AccountSettings = () => {
 
   return (
     <div className="app-page app-page--wide account-settings">
-      <header className="account-settings__header">
-        <h1 className="account-settings__title">Account settings</h1>
-        <p className="account-settings__subtitle">Manage your password and signing key.</p>
-      </header>
+      <PageHeader
+        title="Account settings"
+        description="Manage your password and signing key."
+      />
 
       {isSetupRequired() && (
         <InlineNotification
