@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   DataTable, TableContainer, Table, TableHead, TableRow, TableHeader,
   TableBody, TableCell, TableToolbar, TableToolbarContent, TableToolbarSearch,
   TableSelectAll, TableSelectRow, TableBatchActions, TableBatchAction,
-  InlineNotification, Modal, Tag, Select, SelectItem, InlineLoading,
+  InlineNotification, Modal, Tag, Select, SelectItem,
 } from '@carbon/react';
 import { Renew, TrashCan } from '@carbon/icons-react';
 import rotationService from '../services/rotationService';
@@ -29,6 +29,8 @@ const CredentialRotation = ({ health, initialFilter = 'attention', refreshing, o
   const [search, setSearch] = useState('');
   const [confirmation, setConfirmation] = useState(null);
   const [processing, setProcessing] = useState(false);
+  // The modal's Escape handler can retain the callback from when it opened.
+  const operationInFlight = useRef(false);
   const [result, setResult] = useState(null);
   const [selectionVersion, setSelectionVersion] = useState(0);
 
@@ -54,7 +56,8 @@ const CredentialRotation = ({ health, initialFilter = 'attention', refreshing, o
     setSelectionVersion(version => version + 1);
   };
   const performAction = async () => {
-    if (!confirmation?.open || processing) return;
+    if (!confirmation?.open || operationInFlight.current) return;
+    operationInFlight.current = true;
     setProcessing(true);
     setResult(null);
     try {
@@ -76,11 +79,12 @@ const CredentialRotation = ({ health, initialFilter = 'attention', refreshing, o
       setResult({ kind: 'error', title: 'Unable to update credentials', message: error.message });
       setConfirmation(current => ({ ...current, open: false }));
     } finally {
+      operationInFlight.current = false;
       setProcessing(false);
     }
   };
   const closeConfirmation = () => {
-    if (!processing) setConfirmation(current => ({ ...current, open: false }));
+    if (!operationInFlight.current) setConfirmation(current => ({ ...current, open: false }));
   };
   const credentialLabel = kind === 'password' ? 'passwords' : 'public keys';
 
@@ -167,15 +171,15 @@ const CredentialRotation = ({ health, initialFilter = 'attention', refreshing, o
       {kind === 'key' && <p className="analytics-section-copy credential-review__note">Unregistered public keys cannot be revoked. The account owner must register a key in Account Settings.</p>}
       <Modal open={Boolean(confirmation?.open)} danger
         modalHeading={confirmation?.kind === 'password' ? 'Require a password change?' : 'Revoke these public keys?'}
-        primaryButtonText={processing ? 'Updating…' : confirmation?.kind === 'password' ? 'Require password change' : 'Revoke public keys'}
+        primaryButtonText={confirmation?.kind === 'password' ? 'Require password change' : 'Revoke public keys'}
         secondaryButtonText="Cancel" primaryButtonDisabled={processing || !confirmation?.users.length}
-        secondaryButtonDisabled={processing} onRequestClose={closeConfirmation} onSecondarySubmit={closeConfirmation}
+        loadingStatus={processing ? 'active' : 'inactive'} loadingDescription="Updating selected accounts…"
+        onRequestClose={closeConfirmation} onSecondarySubmit={closeConfirmation}
         onRequestSubmit={performAction} preventCloseOnClickOutside>
         <p>{confirmation?.kind === 'password'
           ? 'These users will need to change their password the next time they sign in.'
           : 'These users will be unable to sign requests until they register a new public key.'}</p>
         <ul className="credential-review__confirmation">{confirmation?.users.map(user => <li key={user.id}>{user.name}</li>)}</ul>
-        {processing && <InlineLoading description="Updating selected accounts…" />}
       </Modal>
     </section>
   );
