@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   Grid,
   Column,
@@ -123,49 +124,38 @@ const BuildDetails = ({ build, onBack, userRole, advanceBuildState }) => {
 
   if (!build) {
     return (
-      <div className="app-page app-page--wide app-page--padded">
-        <p>Loading build details...</p>
+      <div className="app-page app-page--wide">
+        <PageHeader title="Build details" description="Loading build details…" />
       </div>
     );
   }
 
   return (
-    <div className="app-page app-page--wide app-page--padded">
-      {/* Breadcrumb Navigation */}
-      <Breadcrumb noTrailingSlash className="build-details-breadcrumb">
-        <BreadcrumbItem>
-          <a href="#" onClick={(e) => { e.preventDefault(); onBack?.(); }}>
-            Builds
-          </a>
-        </BreadcrumbItem>
-        <BreadcrumbItem isCurrentPage>
-          {build.name}
-        </BreadcrumbItem>
-      </Breadcrumb>
-
-      {/* Header */}
-      <div className="app-page__header">
-        <div>
-          <h1 className="app-page__title">{build.name}</h1>
-          <p className="app-page__subtitle">
-            Build ID: {build.id} • Status: {currentStatus}
-          </p>
-        </div>
-        <Button
-          kind="tertiary"
-          size="md"
-          onClick={onBack}
-          className="build-details-back-button"
-        >
-          <ArrowLeft size={16} className="build-details-back-button__icon" />
-          Back to Builds
-        </Button>
-      </div>
+    <div className="app-page app-page--wide">
+      <PageHeader
+        title={build.name}
+        description={<>Build ID: {build.id} • Status: {currentStatus}</>}
+        actions={(
+          <Button kind="tertiary" size="md" renderIcon={ArrowLeft} onClick={onBack}>
+            Back to builds
+          </Button>
+        )}
+        navigation={(
+          <Breadcrumb noTrailingSlash>
+            <BreadcrumbItem>
+              <a href="#" onClick={(event) => { event.preventDefault(); onBack?.(); }}>
+                Builds
+              </a>
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>{build.name}</BreadcrumbItem>
+          </Breadcrumb>
+        )}
+      />
 
       <Tile className="build-details-stage">
         <div className="build-details-stage__header">
           <div>
-            <h3 className="build-details-stage__title">Build Stage</h3>
+            <h2 className="build-details-stage__title">Build stage</h2>
             <p className="build-details-stage__description">
               {stageStatusMeta.description || 'Track current stage progression for this build.'}
             </p>

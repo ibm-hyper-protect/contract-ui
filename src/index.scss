@@ -57,33 +57,65 @@ body {
 }
 
 .app-page__header {
+  margin-block-end: spacing.$spacing-07;
+  padding-inline: spacing.$spacing-05;
+}
+
+.app-page__header--flush {
+  padding-inline: 0;
+}
+
+.app-page__header-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: spacing.$spacing-05;
+
+  @include breakpoint.breakpoint-down(md) {
+    flex-direction: column;
+  }
 }
 
-.app-page__header--stacked {
-  display: block;
+.app-page__heading {
+  min-inline-size: 0;
 }
 
 .app-page__title {
-  margin: 0 0 0.5rem 0;
+  @include type.type-style('heading-04');
+  margin: 0;
+  color: var(--cds-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .app-page__subtitle {
+  @include type.type-style('body-01');
   color: var(--cds-text-secondary);
-  margin: 0;
+  margin: spacing.$spacing-03 0 0;
+  overflow-wrap: anywhere;
 }
 
 .app-page__actions {
   display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: spacing.$spacing-03;
+  max-inline-size: 100%;
+}
+
+.app-page__navigation {
+  margin-block-end: spacing.$spacing-05;
+  overflow-wrap: anywhere;
+}
+
+.app-section-heading {
+  @include type.type-style('heading-03');
+  margin: 0;
 }
 
 .app-section-title {
+  @include type.type-style('heading-03');
+  padding-inline: spacing.$spacing-05;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--cds-border-subtle);
@@ -101,6 +133,7 @@ body {
 }
 
 .state-panel__title {
+  @include type.type-style('heading-03');
   margin-bottom: 0.5rem;
 }
 
@@ -406,19 +439,6 @@ body {
   max-width: 600px;
 }
 
-.login-section-title {
-  font-size: 2rem;
-  font-weight: 400;
-  margin-bottom: 0.5rem;
-  color: var(--cds-text-primary);
-}
-
-.login-section-subtitle {
-  font-size: 0.875rem;
-  color: var(--cds-text-secondary);
-  margin-bottom: 2rem;
-}
-
 .login-card {
   padding: 2rem;
   margin-bottom: 1rem;
@@ -693,6 +713,7 @@ body {
 }
 
 .home-tile__title {
+  @include type.type-style('heading-02');
   margin-bottom: 1.5rem;
 }
 
@@ -940,22 +961,6 @@ body {
   margin-top: 0.75rem;
 }
 
-.account-settings__header {
-  margin-block-end: spacing.$spacing-07;
-  padding-inline: spacing.$spacing-05;
-}
-
-.account-settings__title {
-  @include type.type-style('heading-04');
-  margin: 0;
-}
-
-.account-settings__subtitle {
-  @include type.type-style('body-01');
-  color: var(--cds-text-secondary);
-  margin: spacing.$spacing-03 0 0;
-}
-
 .account-settings-notification {
   margin-block-end: spacing.$spacing-06;
   margin-inline: spacing.$spacing-05;
@@ -1088,20 +1093,6 @@ body {
   min-inline-size: 0;
 }
 
-.build-details-breadcrumb {
-  margin-bottom: 1rem;
-}
-
-.build-details-back-button.cds--btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.build-details-back-button__icon {
-  flex-shrink: 0;
-}
-
 .build-details-stage {
   margin-top: 1rem;
   margin-bottom: 1.5rem;
@@ -1117,8 +1108,8 @@ body {
 }
 
 .build-details-stage__title {
+  @include type.type-style('heading-03');
   margin: 0;
-  font-size: 1rem;
 }
 
 .build-details-stage__description {
@@ -1156,10 +1147,6 @@ body {
   top: 5rem;
   right: 1rem;
   z-index: 9999;
-}
-
-.user-management-header-actions {
-  gap: 1rem;
 }
 
 .user-management-role-tags {
@@ -1314,19 +1301,6 @@ body {
   margin-bottom: 1rem;
 }
 
-.not-found-page__title {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: var(--cds-text-primary);
-}
-
-.not-found-page__description {
-  font-size: 1rem;
-  color: var(--cds-text-secondary);
-  margin-bottom: 2rem;
-  max-width: 500px;
-}
-
 .not-found-page__actions {
   display: flex;
   gap: 1rem;
@@ -1343,8 +1317,8 @@ body {
 }
 
 .not-found-page__help-title {
+  @include type.type-style('heading-02');
   margin-bottom: 0.5rem;
-  font-size: 1rem;
 }
 
 .not-found-page__help-copy {
@@ -1353,13 +1327,9 @@ body {
   margin: 0;
 }
 
-.server-config-title {
-  margin-bottom: 1rem;
-}
-
-.server-config-subtitle {
-  margin-bottom: 2rem;
-  color: var(--cds-text-secondary);
+.server-config-content {
+  max-inline-size: var(--app-page-max-width-narrow);
+  margin-inline: spacing.$spacing-05;
 }
 
 .server-config-card {
@@ -1440,6 +1410,7 @@ body {
 }
 
 .workflow-title {
+  @include type.type-style('heading-03');
   margin-bottom: 0.5rem;
 }
 
@@ -1857,10 +1828,6 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.header-content h4 {
-  margin: 0;
 }
 
 .header-actions {
@@ -2671,10 +2638,6 @@ body {
   gap: 0.5rem;
 }
 
-.contract-export__header-content h4 {
-  margin: 0;
-}
-
 .contract-export__metadata {
   margin: 1rem 0;
   padding: 1rem;
@@ -3123,11 +3086,6 @@ body {
 @media (max-width: 768px) {
   .app-page--padded {
     padding: 1rem;
-  }
-
-  .app-page__header {
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .login-page {

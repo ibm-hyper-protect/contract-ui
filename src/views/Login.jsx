@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   Form,
   TextInput,
@@ -449,14 +450,11 @@ const Login = ({ onLogin }) => {
               <HyperProtectIcon size={48} />
             </div>
 
-            {/* Title */}
-            <h1 className="login-section-title">
-              Log in to <strong>IBM Confidential Computing Contract UI</strong>
-            </h1>
-
-            <p className="login-section-subtitle">
-              Don't have an account? Contact system administrator
-            </p>
+            <PageHeader
+              title="Log in to IBM Confidential Computing Contract UI"
+              description="Don’t have an account? Contact your system administrator."
+              className="app-page__header--flush"
+            />
 
             {/* Login Card */}
             <Tile className="login-card">

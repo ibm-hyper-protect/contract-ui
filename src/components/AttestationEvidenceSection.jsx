@@ -204,7 +204,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
 
   return (
     <div className="attestation-evidence-section">
-      <h3 className="workflow-title">{title}</h3>
+      <h2 className="workflow-title">{title}</h2>
       <p className="workflow-description">{description}</p>
 
       {error && (

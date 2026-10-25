@@ -223,7 +223,7 @@ const ContractExport = ({ buildId, buildStatus, onStatusUpdate }) => {
         <div className="contract-export__header">
           <div className="contract-export__header-content">
             <DocumentExport size={24} />
-            <h4>Contract Export</h4>
+            <h2 className="app-section-heading">Contract export</h2>
           </div>
           {exportData && (
             <Tag type="green" renderIcon={CheckmarkFilled}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   DataTable,
   TableContainer,
@@ -120,13 +121,37 @@ const SystemLogs = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const pageHeader = (
+    <PageHeader
+      title="System logs"
+      description="Review authentication, user activity, and administrative events."
+      actions={(
+        <Button
+          kind="tertiary"
+          size="md"
+          renderIcon={Renew}
+          onClick={() => loadLogs({ showLoader: false })}
+          disabled={isLoading || refreshing}
+        >
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      )}
+    />
+  );
+
   if (isLoading) {
-    return <FullPageLoader description="Loading system logs..." />;
+    return (
+      <div className="app-page app-page--wide">
+        {pageHeader}
+        <FullPageLoader description="Loading system logs..." />
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="app-page">
+      <div className="app-page app-page--wide">
+        {pageHeader}
         <ErrorStatePanel
           title="Failed to Load System Logs"
           description={error}
@@ -137,26 +162,8 @@ const SystemLogs = () => {
   }
 
   return (
-    <div className="app-page">
-      <div className="app-page__header">
-        <div>
-          <h1 className="app-page__title">System Logs</h1>
-          <p className="app-page__subtitle">
-            System-wide audit logs for user activities, authentication, and administrative actions
-          </p>
-        </div>
-        <div className="app-page__actions">
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Renew}
-            onClick={() => loadLogs({ showLoader: false })}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-        </div>
-      </div>
+    <div className="app-page app-page--wide">
+      {pageHeader}
 
       <DataTable rows={paginatedLogs} headers={headers}>
         {({

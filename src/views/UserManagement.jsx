@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   DataTable,
   Table,
@@ -556,10 +557,39 @@ const UserManagement = () => {
            !nameError;
   };
 
+  const pageHeader = (
+    <PageHeader
+      title="User management"
+      description="Manage users, roles, and account access."
+      actions={(
+        <>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Renew}
+            onClick={loadUsers}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+          <Button
+            renderIcon={Add}
+            size="md"
+            onClick={handleCreateClick}
+            disabled={loading || Boolean(error)}
+          >
+            Create New User
+          </Button>
+        </>
+      )}
+    />
+  );
+
   // Show error state
   if (error) {
     return (
-      <div className="app-page app-page--padded">
+      <div className="app-page app-page--wide">
+        {pageHeader}
         <ErrorStatePanel
           title="Failed to Load Users"
           description={error}
@@ -570,7 +600,7 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="app-page user-management-page">
+    <div className="app-page app-page--wide user-management-page">
       {notification && (
         <div className="user-management-toast">
           <ToastNotification
@@ -584,25 +614,7 @@ const UserManagement = () => {
         </div>
       )}
 
-      <div className="app-page__header">
-        <h1 className="app-page__title">User Management</h1>
-        <div className="app-page__actions user-management-header-actions">
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Renew}
-            onClick={loadUsers}
-          >
-            Refresh
-          </Button>
-          <Button
-            renderIcon={Add}
-            onClick={handleCreateClick}
-          >
-            Create New User
-          </Button>
-        </div>
-      </div>
+      {pageHeader}
 
       {loading ? (
         <div className="user-management-loading">
@@ -680,7 +692,7 @@ const UserManagement = () => {
       {inactiveRows.length > 0 && (
         <div className="user-management-inactive">
           <div className="user-management-inactive__header">
-            <h3>Inactive Users ({inactiveRows.length})</h3>
+            <h2 className="app-section-heading">Inactive users ({inactiveRows.length})</h2>
             <Button
               kind="ghost"
               size="sm"

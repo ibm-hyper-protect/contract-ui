@@ -346,7 +346,7 @@ const SectionSubmit = ({ buildId, buildStatus: buildStatusProp, personaRole, onS
 
   return (
     <div ref={topRef}>
-      <h3 className="workflow-title">{config.title}</h3>
+      <h2 className="workflow-title">{config.title}</h2>
       <p className="workflow-description">
         {config.description}
       </p>

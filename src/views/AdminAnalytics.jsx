@@ -6,6 +6,7 @@ import {
 } from '@carbon/react';
 import { ArrowRight, CheckmarkFilled, Renew, WarningAlt } from '@carbon/icons-react';
 import CredentialRotation from '../components/CredentialRotation';
+import PageHeader from '../components/PageHeader';
 import { FullPageLoader } from '../components/LoadingSpinner';
 import { ErrorStatePanel, StatePanel } from '../components/StatePanel';
 import userService from '../services/userService';
@@ -114,16 +115,16 @@ const AdminAnalytics = () => {
     setSelectedTab(1);
   };
   const pageHeader = (
-    <header className="analytics-header">
-      <div className="analytics-header__copy">
-        <h1 className="analytics-header__title">Admin diagnostics & analytics</h1>
-        <p className="analytics-header__description">Monitor build activity and keep account credentials up to date.</p>
-      </div>
-      <Button kind="tertiary" size="md" renderIcon={Renew}
-        disabled={loading || refreshing} onClick={() => loadAnalytics()}>
-        {refreshing ? 'Refreshing…' : 'Refresh'}
-      </Button>
-    </header>
+    <PageHeader
+      title="Admin diagnostics & analytics"
+      description="Monitor build activity and keep account credentials up to date."
+      actions={
+        <Button kind="tertiary" size="md" renderIcon={Renew}
+          disabled={loading || refreshing} onClick={() => loadAnalytics()}>
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </Button>
+      }
+    />
   );
 
   if (loading) {

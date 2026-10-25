@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
   Grid,
   Column,
@@ -20,6 +21,7 @@ import { TileSkeletonLoader, ContentSkeletonLoader } from '../components/Loading
 import { useAuthStore } from '../store/authStore';
 import { formatDateOnly } from '../utils/formatters';
 import { getRoleLabel } from '../utils/roles';
+import { BUILD_STATUS_CONFIG } from '../utils/constants';
 
 const ALERT_CLASS_BY_TYPE = {
   critical: 'home-alert-item--critical',
@@ -282,15 +284,11 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
   }, []);
 
   return (
-    <div className="app-page home-page">
-      <div className="app-page__header">
-        <div>
-          <h1 className="app-page__title">Welcome, {currentUser.name}</h1>
-          <p className="app-page__subtitle">
-            {currentUser.email} • {getRoleLabel(userRole)}
-          </p>
-        </div>
-        <div className="app-page__actions">
+    <div className="app-page app-page--wide home-page">
+      <PageHeader
+        title={`Welcome, ${currentUser.name}`}
+        description={<>{currentUser.email} • {getRoleLabel(userRole)}</>}
+        actions={(
           <Button
             kind="tertiary"
             size="md"
@@ -300,8 +298,8 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
           >
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-        </div>
-      </div>
+        )}
+      />
 
       <h2 className="app-section-title">Account Overview</h2>
 
@@ -407,10 +405,10 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
                 <p className="home-empty-state__title">All Clear</p>
                 <p className="home-empty-state__description">
                   No account or system alerts at this time.
-                </p>
-              </div>
-            )}
-          </Tile>
+                  </p>
+                </div>
+              )}
+            </Tile>
           </Column>
         </Grid>
       )}
@@ -436,110 +434,125 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
         </Grid>
       ) : (
         <Grid>
-        <Column lg={isViewer ? 16 : 8} md={isViewer ? 8 : 4} sm={4} className="home-grid-column">
-          <Tile className="home-tile">
-            <h3 className="home-tile__title">My Builds</h3>
-
-            {myBuilds.length > 0 ? (
-              <>
-                <div className="home-build-count">
-                  <div className="home-build-count__value">{buildOverview.inProgress}</div>
-                  <div className="home-muted-text">
-                    In-progress builds for your current role
-                  </div>
-                  <div className="home-muted-text">
-                    Total visible: {buildOverview.total}
-                  </div>
-                  <div className="home-muted-text">
-                    Downloaded: {buildOverview.downloaded} • Cancelled: {buildOverview.cancelled}
-                  </div>
-                  {!isViewer && (
-                    <div className="home-muted-text">
-                      Action required now: {buildActions.length}
-                    </div>
-                  )}
-                </div>
-
-                <div className="home-build-list">
-                  {myBuilds.map((build) => (
-                    <div key={build.id} className="home-build-list-item">
-                      <div className="home-build-list-item__name">
-                        {build.name}
-                      </div>
-                      <div className="home-build-list-item__meta">
-                        Status: {(build.status || 'UNKNOWN').replace(/_/g, ' ')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  onClick={() => onNavigate('BUILDS')}
-                >
-                  View All Builds
-                </Button>
-              </>
-            ) : (
-              <div className="home-text-empty">
-                <p>No builds assigned to you yet.</p>
-              </div>
-            )}
-          </Tile>
-        </Column>
-
-        {!isViewer && (
-          <Column lg={8} md={4} sm={4} className="home-grid-column">
+          <Column lg={isViewer ? 16 : 8} md={isViewer ? 8 : 4} sm={4} className="home-grid-column">
             <Tile className="home-tile">
-              <h3 className="home-tile__title">Build Actions Required</h3>
+              <h3 className="home-tile__title">My Builds</h3>
 
-              {buildActions.length > 0 ? (
-                <div>
-                  {buildActions.map((action, index) => (
-                    <div key={index} className="home-build-action-card">
-                      <div className="home-build-action-card__header">
-                        <div>
-                          <h4 className="home-build-action-card__build-name">{action.buildName}</h4>
-                          <Tag type="blue" size="sm" className="home-build-action-card__status-tag">
-                            {action.status.replace(/_/g, ' ')}
-                          </Tag>
-                        </div>
-                      </div>
-                      <div className="home-build-action-card__details">
-                        <div className="home-build-action-card__title">
-                          {action.title}
-                        </div>
-                        <div className="home-build-action-card__description">
-                          Role: {getRoleLabel(action.role)}
-                        </div>
-                        <div className="home-build-action-card__description">
-                          {action.description}
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          onSelectBuild(action.buildId);
-                          onNavigate('BUILDS');
-                        }}
-                      >
-                        Go to {action.buildName}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+              {myBuilds.length > 0 ? (
+                <>
+
+                  <div className="home-muted-text" style={{ marginTop: 0 }}>Total Builds:</div>
+                  <div className="home-build-count__value">{buildOverview.total}</div>
+
+                 <div className="home-build-count">
+  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem' }}>
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <Tag type="outline" size="sm" style={{ margin: 0 }}>In-Progress: {buildOverview.inProgress}</Tag>
+      <Tag type="teal" size="sm" style={{ margin: 0 }}>Downloaded: {buildOverview.downloaded}</Tag>
+      <Tag type="red" size="sm" style={{ margin: 0 }}>Cancelled: {buildOverview.cancelled}</Tag>
+      {!isViewer && (
+        <Tag type={buildActions.length > 0 ? 'magenta' : 'outline'} size="sm" style={{ margin: 0 }}>
+          Action required: {buildActions.length}
+        </Tag>
+      )}
+    </div>
+  </div>
+</div>
+                  <div className="home-muted-text" style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }} ></div>
+                  <div className="home-build-list">
+                    {myBuilds
+                      .filter((build) => (build.status || '').toUpperCase() !== 'CANCELLED')
+                      .slice(0, 5)
+                      .map((build) => {
+                        const statusConfig = BUILD_STATUS_CONFIG[(build.status || '').toUpperCase()];
+                        return (
+                          <div
+                            key={build.id}
+                            className="home-build-list-item"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}
+                          >
+                            <div
+                              className="home-build-list-item__name"
+                              style={{ marginBottom: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            >
+                              {build.name}
+                            </div>
+                            <Tag type={statusConfig?.kind || 'gray'} size="sm" style={{ margin: 0, flexShrink: 0 }}>
+                              {statusConfig?.label || (build.status || 'UNKNOWN').replace(/_/g, ' ')}
+                            </Tag>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    size="sm"
+                    kind="tertiary"
+
+                    onClick={() => { onSelectBuild(null); onNavigate('BUILDS') }}
+                  >
+                    View All Builds
+                  </Button>
+                </>
               ) : (
-                <div className="home-empty-state">
-                  <Checkmark size={32} className="home-empty-state__icon" />
-                  <p className="home-empty-state__title">All Clear</p>
-                  <p className="home-empty-state__description">
-                    No build actions required at this time.
-                  </p>
+                <div className="home-text-empty">
+                  <p>No builds assigned to you yet.</p>
                 </div>
               )}
             </Tile>
           </Column>
+
+          {!isViewer && (
+            <Column lg={8} md={4} sm={4} className="home-grid-column">
+              <Tile className="home-tile">
+                <h3 className="home-tile__title">Build Actions Required</h3>
+
+                {buildActions.length > 0 ? (
+                  <div>
+                    {buildActions.map((action, index) => (
+                      <div key={index} className="home-build-action-card">
+                        <div className="home-build-action-card__header">
+                          <div>
+                            <h4 className="home-build-action-card__build-name">{action.buildName}</h4>
+                            <Tag type="blue" size="sm" className="home-build-action-card__status-tag">
+                              {action.status.replace(/_/g, ' ')}
+                            </Tag>
+                          </div>
+                        </div>
+                        <div className="home-build-action-card__details">
+                          <div className="home-build-action-card__title">
+                            {action.title}
+                          </div>
+                          <div className="home-build-action-card__description">
+                            Role: {getRoleLabel(action.role)}
+                          </div>
+                          <div className="home-build-action-card__description">
+                            {action.description}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            onSelectBuild(action.buildId);
+                            onNavigate('BUILDS');
+                          }}
+                        >
+                          Go to {action.buildName}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="home-empty-state">
+                    <Checkmark size={32} className="home-empty-state__icon" />
+                    <p className="home-empty-state__title">All Clear</p>
+                    <p className="home-empty-state__description">
+                      No build actions required at this time.
+                    </p>
+                  </div>
+                )}
+              </Tile>
+            </Column>
           )}
         </Grid>
       )}
