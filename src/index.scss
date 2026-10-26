@@ -6,6 +6,7 @@
 @use '@carbon/styles/scss/spacing' as spacing;
 @use '@carbon/styles/scss/type' as type;
 @use './styles/modern-theme.scss';
+@use './styles/system-logs.scss';
 
 :root {
   --app-page-max-width: 1400px;
@@ -1231,10 +1232,6 @@ body {
 
 .build-details-tab-content {
   padding: 2rem 0;
-}
-
-.system-logs-pagination {
-  margin-top: 1rem;
 }
 
 .user-management-toast {
