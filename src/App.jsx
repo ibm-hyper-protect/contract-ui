@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import AppShell from './components/AppShell';
 import Home from './views/Home';
 import BuildManagement from './views/BuildManagement';
@@ -13,14 +13,16 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/ToastManager';
 import KeyboardShortcutsHelp from './components/KeyboardShortcutsHelp';
 import CommandPalette from './components/CommandPalette';
+import { PageCommandContext } from './hooks/usePageCommand';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { PERSONAS } from './store/mockData';
 import buildService from './services/buildService';
 import { useAuthStore } from './store/authStore';
+import { useThemeStore } from './store/themeStore';
 import { useConfigStore } from './store/configStore';
 import apiClient from './services/apiClient';
 import { getPrimaryRole, ROLE_LABELS } from './utils/roles';
-import { ProgressBar, Theme, Modal } from '@carbon/react';
+import { ProgressBar, Theme, Modal, InlineNotification } from '@carbon/react';
 import '@carbon/charts/styles.css';
 
 const ROLE_PERSONA_MAP = {
@@ -63,6 +65,14 @@ function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [pageCommand, setPageCommand] = useState(null);
+  const [commandError, setCommandError] = useState(null);
+  const commandSequence = useRef(0);
+  const toggleTheme = useThemeStore(state => state.toggleTheme);
+  const handlePageCommandHandled = useCallback(id => {
+    setPageCommand(current => current?.id === id ? null : current);
+  }, []);
+  const pageCommandContext = useMemo(() => ({ command: pageCommand, onHandled: handlePageCommandHandled }), [pageCommand, handlePageCommandHandled]);
   const [userRole, setUserRole] = useState('ADMIN');
   const [userRoles, setUserRoles] = useState(['ADMIN']);
   const [userEmail, setUserEmail] = useState('');
@@ -86,6 +96,9 @@ function App() {
     setBuilds([]);
     setSelectedBuildId(null);
     setShowWelcomeModal(false);
+    setShowCommandPalette(false);
+    setPageCommand(null);
+    setCommandError(null);
   }, []);
 
   const applyStoredAuthState = useCallback(({ role, rolesJson, email }) => {
@@ -161,6 +174,7 @@ function App() {
       setActivePersona(ROLE_PERSONA_MAP[nextRole] || PERSONAS.VIEWER);
       setUserEmail(email);
       setSelectedBuildId(null);
+      setPageCommand(null);
 
       const canAccessAnalytics = nextRole === 'ADMIN';
       const canAccessUsers = nextRole === 'ADMIN';
@@ -261,6 +275,7 @@ function App() {
     setUserRole(nextRole);
     setActivePersona(ROLE_PERSONA_MAP[nextRole] || PERSONAS.VIEWER);
     setSelectedBuildId(null);
+    setPageCommand(null);
 
     const canAccessAnalytics = nextRole === 'ADMIN';
     const canAccessUsers = nextRole === 'ADMIN';
@@ -330,47 +345,59 @@ function App() {
     handleSelectBuild
   ]);
 
-  // Command palette action handler
+  // Commands request page actions after the destination view has mounted.
   const handleCommandPaletteAction = useCallback((actionType, payload) => {
+    const requestPageAction = (view, type) => {
+      if (setupRequired) return;
+      if (view === 'BUILDS') setSelectedBuildId(null);
+      setActiveNav(view);
+      setPageCommand({ id: ++commandSequence.current, type });
+    };
+    const openProjectLink = async (url) => {
+      try {
+        await window.electron.shell.openExternal(url);
+      } catch {
+        setCommandError('The link could not be opened. Please try again.');
+      }
+    };
+
     switch (actionType) {
       case 'navigate':
+        setPageCommand(null);
         setActiveNav(payload);
         break;
       case 'createBuild':
-        // Trigger create build modal in BuildManagement
-        setActiveNav('BUILDS');
+        if (userRole === 'ADMIN' || userRole === 'AUDITOR') requestPageAction('BUILDS', actionType);
         break;
       case 'refreshBuilds':
         loadBuilds();
         break;
       case 'toggleFilters':
-        // This would need to be passed down to BuildManagement
-        break;
       case 'exportBuilds':
-        // This would need to be passed down to BuildManagement
+        requestPageAction('BUILDS', actionType);
         break;
       case 'createUser':
-        setActiveNav('USERS');
+        if (userRole === 'ADMIN') requestPageAction('USERS', actionType);
         break;
       case 'logout':
         handleLogout();
         break;
       case 'toggleTheme':
-        // Theme toggle would be implemented here
+        toggleTheme();
         break;
       case 'showShortcuts':
         setShowShortcutsHelp(true);
         break;
       case 'openDocs':
-        window.open('https://docs.example.com', '_blank');
+        openProjectLink('https://github.com/ibm-hyper-protect/contract-ui#readme');
         break;
       case 'contactSupport':
-        window.open('mailto:support@example.com', '_blank');
+        openProjectLink('https://github.com/ibm-hyper-protect/contract-ui/issues/new/choose');
         break;
       default:
         console.warn('Unknown command palette action:', actionType);
     }
-  }, [loadBuilds, handleLogout]);
+  }, [loadBuilds, handleLogout, setupRequired, userRole, toggleTheme]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -466,7 +493,18 @@ function App() {
             onAction={handleCommandPaletteAction}
           />
           
-          {activeView}
+          {commandError && (
+            <InlineNotification
+              kind="error"
+              title="Unable to open link"
+              subtitle={commandError}
+              lowContrast
+              onCloseButtonClick={() => setCommandError(null)}
+            />
+          )}
+          <PageCommandContext.Provider value={pageCommandContext}>
+            {activeView}
+          </PageCommandContext.Provider>
         </AppShell>
       </ToastProvider>
     </ErrorBoundary>
