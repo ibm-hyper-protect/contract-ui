@@ -2,6 +2,7 @@
   $font-path: '@ibm/plex'
 );
 @use '@carbon/react';
+@use './styles/build-details.scss';
 @use '@carbon/styles/scss/breakpoint' as breakpoint;
 @use '@carbon/styles/scss/spacing' as spacing;
 @use '@carbon/styles/scss/type' as type;
@@ -1186,47 +1187,6 @@ body {
 .account-credential-panel__notification {
   max-inline-size: 100%;
   min-inline-size: 0;
-}
-
-.build-details-stage {
-  margin-top: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-}
-
-.build-details-stage__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.build-details-stage__title {
-  @include type.type-style('heading-03');
-  margin: 0;
-}
-
-.build-details-stage__description {
-  margin: 0.35rem 0 0;
-  color: var(--cds-text-secondary);
-  font-size: 0.875rem;
-}
-
-.build-details-stage__cancelled {
-  margin: 0.75rem 0 0;
-  color: var(--cds-support-error);
-  font-size: 0.875rem;
-}
-
-.build-details-stage .cds--progress {
-  margin-top: 0.25rem;
-}
-
-.build-details-stage__pending {
-  margin: 0.85rem 0 0;
-  color: var(--cds-text-secondary);
-  font-size: 0.875rem;
 }
 
 .build-details-tab-content {
