@@ -7,6 +7,29 @@ import userKeyService, { isActiveKey } from './userKeyService';
  * Handles password and public key expiry monitoring and enforcement
  */
 class RotationService {
+  /** Load complete histories for enabled accounts; a failed read must not become a legacy fallback. */
+  async getKeyInventory(users) {
+    const entries = await Promise.all(users.filter(user => user.is_active).map(async user => (
+      [user.id, await userKeyService.list(user.id)]
+    )));
+    return Object.fromEntries(entries);
+  }
+
+  /** Revoke selected devices individually, preserving unrelated keys and partial results. */
+  async bulkRevokeCredentialKeys(items) {
+    const results = { success: [], failed: [] };
+    for (const { userId, keyId } of items) {
+      try {
+        if (!userId || !keyId) throw new Error('A user and device key are required.');
+        await userKeyService.revoke(userId, keyId);
+        results.success.push({ userId, keyId });
+      } catch (error) {
+        results.failed.push({ userId, keyId, error: error.message });
+      }
+    }
+    return results;
+  }
+
   /**
    * Get expired credentials (admin only)
    * @returns {Promise<Object>} - {expired_passwords: Array, expired_keys: Array}

@@ -363,3 +363,44 @@ test('a missing local signing key surfaces its message without retrying an unsig
   await assert.rejects(apiClient.post('/builds', { name: 'No key' }), { message: 'Local signing key unavailable.' });
   assert.equal(calls.length, 0);
 });
+
+test('credential review inventories retain device history and skip disabled accounts', async () => {
+  keys.push({ ...newKey, revoked_at: '2026-01-01T00:00:00Z' });
+  const inventory = await rotationService.getKeyInventory([
+    { id: 'owner', is_active: true },
+    { id: 'disabled', is_active: false }
+  ]);
+  assert.deepEqual(inventory, { owner: keys });
+  assert.deepEqual(calls.map(call => call.url), ['/users/owner/public-keys']);
+});
+
+test('credential review rejects incomplete inventories instead of falling back to account keys', async () => {
+  handleRequest = async () => ({ keys: null });
+  await assert.rejects(
+    rotationService.getKeyInventory([{ id: 'owner', is_active: true }]),
+    /invalid key list/
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, 'get');
+});
+
+test('credential review revokes individual devices with signed requests and exact partial results', async () => {
+  handleRequest = async (config) => {
+    assert.equal(config.method, 'delete');
+    assert.equal(config.headers['X-Key-Fingerprint'], localFingerprint);
+    if (config.url.endsWith('/new-key')) throw new Error('Device update failed');
+    return { success: true };
+  };
+  const outcome = await rotationService.bulkRevokeCredentialKeys([
+    { userId: 'owner', keyId: 'old-key' },
+    { userId: 'owner', keyId: 'new-key' },
+    { userId: 'owner' }
+  ]);
+  assert.deepEqual(outcome.success, [{ userId: 'owner', keyId: 'old-key' }]);
+  assert.deepEqual(outcome.failed.map(item => item.keyId), ['new-key', undefined]);
+  assert.deepEqual(calls.map(call => call.url), [
+    '/users/owner/public-keys/old-key',
+    '/users/owner/public-keys/new-key'
+  ]);
+  assert.ok(calls.every(call => call.headers['X-Signature']));
+});
