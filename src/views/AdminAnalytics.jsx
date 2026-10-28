@@ -1,3 +1,4 @@
+import '../styles/analytics.scss';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DonutChart, GroupedBarChart } from '@carbon/charts-react';
 import {
@@ -5,12 +6,13 @@ import {
   InlineNotification, Layer, useTheme,
 } from '@carbon/react';
 import { ArrowRight, CheckmarkFilled, Renew, WarningAlt } from '@carbon/icons-react';
-import CredentialRotation from '../components/CredentialRotation';
+import CredentialReview from '../components/CredentialReview';
 import PageHeader from '../components/PageHeader';
 import { FullPageLoader } from '../components/LoadingSpinner';
 import { ErrorStatePanel, StatePanel } from '../components/StatePanel';
 import userService from '../services/userService';
 import buildService from '../services/buildService';
+import rotationService from '../services/rotationService';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG } from '../utils/constants';
 import { getRoleLabel, sortRolesByPriority } from '../utils/roles';
 import { getCredentialHealth } from '../utils/credentialHealth';
@@ -37,6 +39,7 @@ const AdminAnalytics = () => {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [users, setUsers] = useState([]);
   const [builds, setBuilds] = useState([]);
+  const [keyInventory, setKeyInventory] = useState(null);
 
   const loadAnalytics = useCallback(async ({ showLoader = false } = {}) => {
     if (showLoader) setLoading(true);
@@ -46,6 +49,10 @@ const AdminAnalytics = () => {
       const [nextUsers, nextBuilds] = await Promise.all([
         userService.listUsers(), buildService.getBuilds(),
       ]);
+      // Older servers use the user snapshot; device-key support supplies a full inventory.
+      // Commit the snapshot together so counts and device actions agree.
+      const nextKeys = (await rotationService.getKeyInventory?.(nextUsers)) ?? null;
+      setKeyInventory(nextKeys);
       setUsers(nextUsers);
       setBuilds(nextBuilds);
       setHasLoaded(true);
@@ -60,7 +67,7 @@ const AdminAnalytics = () => {
   useEffect(() => { loadAnalytics({ showLoader: true }); }, [loadAnalytics]);
 
   // Derive counts together so the review table always agrees with the overview.
-  const health = useMemo(() => getCredentialHealth(users), [users]);
+  const health = useMemo(() => getCredentialHealth(users, Date.now(), keyInventory), [users, keyInventory]);
   const activeUsers = users.filter(user => user.is_active).length;
   const activeBuilds = builds.filter(build => !TERMINAL_STATUSES.has(build.status)).length;
   const readyContracts = builds.filter(build => build.status === BUILD_STATUS.FINALIZED).length;
@@ -226,7 +233,7 @@ const AdminAnalytics = () => {
           </TabPanel>
           <TabPanel>
             <Layer className="analytics-content">
-              <CredentialRotation key={credentialFilter} health={health} initialFilter={credentialFilter}
+              <CredentialReview key={credentialFilter} health={health} initialFilter={credentialFilter}
                 refreshing={refreshing} onRefresh={loadAnalytics} />
             </Layer>
           </TabPanel>

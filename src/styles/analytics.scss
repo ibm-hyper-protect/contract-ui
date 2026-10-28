@@ -186,3 +186,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.credential-review__confirmation code {
+  overflow-wrap: anywhere;
+}

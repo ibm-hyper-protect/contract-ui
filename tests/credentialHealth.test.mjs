@@ -107,3 +107,50 @@ test('deriving the review leaves the API snapshot unchanged', () => {
   getCredentialHealth([input], now);
   assert.deepEqual(input, user);
 });
+
+
+test('device histories count each unrevoked key and deduplicate affected users', () => {
+  const inventory = { one: [
+    { id: 'laptop', label: 'Laptop', fingerprint: 'aaa', expires_at: date(-1) },
+    { id: 'desktop', label: 'Desktop', fingerprint: 'bbb', expires_at: date(-2) },
+    { id: 'tablet', label: 'Tablet', fingerprint: 'ccc', expires_at: date(90) },
+    { id: 'revoked', fingerprint: 'ddd', expires_at: date(-9), revoked_at: date(-8) },
+  ] };
+  const before = structuredClone(inventory);
+  const health = getCredentialHealth([user], now, inventory);
+  assert.equal(health.deviceKeys, true);
+  assert.equal(health.attentionKeys, 2);
+  assert.equal(health.attentionUsers, 1);
+  const keys = health.credentials.filter(item => item.kind === 'key');
+  assert.deepEqual(keys.map(item => item.keyId), ['laptop', 'desktop', 'tablet']);
+  assert.equal(new Set(keys.map(item => item.id)).size, 3);
+  assert.equal(keys[0].label, 'Laptop');
+  assert.equal(keys[0].fingerprint, 'aaa');
+  assert.deepEqual(inventory, before);
+});
+
+test('empty and fully revoked histories show registration reminders, never legacy keys', () => {
+  for (const keys of [[], [{ id: 'revoked', fingerprint: 'old', revoked_at: date(-1) }]]) {
+    const health = getCredentialHealth([user], now, { one: keys });
+    const key = health.credentials.find(item => item.kind === 'key');
+    assert.equal(key.status, 'missing');
+    assert.equal(key.keyId, undefined);
+    assert.equal(health.attentionKeys, 1);
+  }
+});
+
+test('device inventories ignore disabled accounts and deduplicate upcoming users', () => {
+  const health = getCredentialHealth([
+    { ...user, password_expires_at: date(2) }, { ...user, id: 'disabled', is_active: false },
+  ], now, { one: [
+    { id: 'a', fingerprint: 'aaa', expires_at: date(3) },
+    { id: 'b', fingerprint: 'bbb', expires_at: date(5) },
+  ] });
+  assert.equal(health.expiringUsers, 1);
+  assert.equal(health.credentials.length, 3);
+});
+
+test('incomplete inventories fail instead of exposing a misleading legacy key', () => {
+  assert.throws(() => getCredentialHealth([user], now, {}), TypeError);
+  assert.equal(getCredentialHealth([user], now).deviceKeys, false);
+});
