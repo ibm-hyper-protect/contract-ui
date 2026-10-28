@@ -1,14 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import '../styles/user-directory.scss';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PageHeader from '../components/PageHeader';
 import {
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  TableContainer,
   Button,
   Modal,
   TextInput,
@@ -18,15 +11,16 @@ import {
   OverflowMenuItem,
   Checkbox,
   ToastNotification,
-  Pagination
+  DataTableSkeleton,
+  InlineNotification
 } from '@carbon/react';
 import { Add, Renew } from '@carbon/icons-react';
 import userService from '../services/userService';
 import { ROLE_NAMES } from '../utils/constants';
-import { DataTableSkeletonLoader } from '../components/LoadingSpinner';
+import UserDirectory from '../components/UserDirectory';
 import { PasswordStrengthMeter, isPasswordValid } from '../components/PasswordStrengthMeter';
 import { formatDateOnly } from '../utils/formatters';
-import { ErrorStatePanel, StatePanel } from '../components/StatePanel';
+import { ErrorStatePanel } from '../components/StatePanel';
 import { useAuthStore } from '../store/authStore';
 import { getPrimaryRole } from '../utils/roles';
 import { validateEmail, validateUserName } from '../utils/validators';
@@ -39,14 +33,6 @@ const ACTIVE_TABLE_HEADERS = [
   { key: 'keyStatus', header: 'Public Key Status' },
   { key: 'keyExpiresAt', header: 'Key Expiry' },
   { key: 'passwordStatus', header: 'Password Status' },
-  { key: 'action', header: 'Actions' }
-];
-
-const INACTIVE_TABLE_HEADERS = [
-  { key: 'name', header: 'User Name' },
-  { key: 'email', header: 'Email' },
-  { key: 'role', header: 'Persona Role' },
-  { key: 'status', header: 'Status' },
   { key: 'action', header: 'Actions' }
 ];
 
@@ -65,10 +51,10 @@ const UserManagement = () => {
   const [adminResetModalOpen, setAdminResetModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [notification, setNotification] = useState(null);
-  const [showInactive, setShowInactive] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const requestVersion = useRef(0);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -85,25 +71,31 @@ const UserManagement = () => {
   const [nameError, setNameError] = useState('');
   const [emailValidating, setEmailValidating] = useState(false);
 
-  // Load users on mount
-  useEffect(() => {
-    loadUsers();
+  const loadUsers = useCallback(async ({ showLoader = false } = {}) => {
+    const version = ++requestVersion.current;
+    if (showLoader) setLoading(true);
+    else setRefreshing(true);
+    setError(null);
+    try {
+      const usersData = await userService.listUsers();
+      if (version !== requestVersion.current) return;
+      setUsers(usersData);
+      setHasLoaded(true);
+    } catch (err) {
+      if (version === requestVersion.current) setError(err.message || 'Please try again.');
+    } finally {
+      if (version === requestVersion.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const usersData = await userService.listUsers();
-      setUsers(usersData);
-    } catch (err) {
-      console.error('Failed to load users:', err);
-      setError(err.message || 'Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+  useEffect(() => {
+    loadUsers({ showLoader: true });
+    return () => { requestVersion.current += 1; };
+  }, [loadUsers]);
+
   // Validate email format
   const validateEmailField = useCallback((email) => {
     if (!emailTouched) return;
@@ -147,8 +139,6 @@ const UserManagement = () => {
     }));
   };
 
-  const headers = useMemo(() => ACTIVE_TABLE_HEADERS, []);
-
   // All active user rows (before pagination)
   const allActiveRows = useMemo(() => (
     users
@@ -189,7 +179,7 @@ const UserManagement = () => {
           keyExpiresAt: formatDateOnly(u.public_key_expires_at),
           passwordStatus: (
             u.must_change_password ? (
-              <Tag type="yellow">Pending Reset</Tag>
+              <Tag type="warm-gray">Pending Reset</Tag>
             ) : (
               <Tag type={passwordExpired ? 'red' : 'green'}>
                 {passwordExpired ? 'Expired' : 'Valid'}
@@ -200,6 +190,8 @@ const UserManagement = () => {
             <div className="user-management-action-cell">
               <OverflowMenu
                 size="sm"
+                iconDescription={`Actions for ${u.name || u.email}`}
+                disabled={loading || refreshing}
                 flipped
                 menuOptionsClass="user-management-overflow-options"
               >
@@ -230,21 +222,7 @@ const UserManagement = () => {
           )
         };
       })
-  ), [users]);
-
-  // Paginated active rows
-  const rows = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return allActiveRows.slice(startIndex, endIndex);
-  }, [allActiveRows, currentPage, pageSize]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(allActiveRows.length / pageSize));
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [allActiveRows.length, currentPage, pageSize]);
+  ), [users, loading, refreshing]);
 
   // Inactive user rows
   const inactiveRows = useMemo(() => (
@@ -259,7 +237,7 @@ const UserManagement = () => {
             {u.roles && u.roles.length > 0 ? (
               u.roles.map((r) => (
                 <Tag type="gray" key={r.role_id || r.id || r.name || r}>
-                  {r.role_name || r.name || r}
+                  {ROLE_NAMES[r.role_name || r.name || r] || r.role_name || r.name || r}
                 </Tag>
               ))
             ) : (
@@ -274,13 +252,14 @@ const UserManagement = () => {
               kind="tertiary"
               size="sm"
               onClick={() => handleReactivateClick(u)}
+              disabled={loading || refreshing}
             >
               Reactivate
             </Button>
           </div>
         )
       }))
-  ), [users]);
+  ), [users, loading, refreshing]);
 
   const handleEditClick = (user) => {
     setSelectedUser(user);
@@ -567,16 +546,16 @@ const UserManagement = () => {
             kind="tertiary"
             size="md"
             renderIcon={Renew}
-            onClick={loadUsers}
-            disabled={loading}
+            onClick={() => loadUsers()}
+            disabled={loading || refreshing}
           >
-            Refresh
+            {refreshing ? 'Refreshing…' : 'Refresh'}
           </Button>
           <Button
             renderIcon={Add}
             size="md"
             onClick={handleCreateClick}
-            disabled={loading || Boolean(error)}
+            disabled={loading || refreshing || (Boolean(error) && !hasLoaded)}
           >
             Create New User
           </Button>
@@ -586,14 +565,14 @@ const UserManagement = () => {
   );
 
   // Show error state
-  if (error) {
+  if (error && !hasLoaded) {
     return (
       <div className="app-page app-page--wide">
         {pageHeader}
         <ErrorStatePanel
-          title="Failed to Load Users"
+          title="Unable to load users"
           description={error}
-          action={<Button onClick={loadUsers}>Retry</Button>}
+          action={<Button onClick={() => loadUsers({ showLoader: true })}>Retry</Button>}
         />
       </div>
     );
@@ -616,132 +595,30 @@ const UserManagement = () => {
 
       {pageHeader}
 
-      {loading ? (
-        <div className="user-management-loading">
-          <DataTableSkeletonLoader
-            rows={10}
-            columns={7}
-            showHeader={true}
-            showToolbar={true}
+      {error && (
+        <div className="user-management-page__refresh-error">
+          <InlineNotification
+            kind="error"
+            title="Refresh failed"
+            subtitle="Showing the previously loaded accounts. Use Refresh to try again."
+            hideCloseButton
+            lowContrast
           />
         </div>
-      ) : users.length === 0 ? (
-        <StatePanel
-          title="No Users Found"
-          description="Get started by creating your first user."
-          action={(
-            <Button renderIcon={Add} onClick={handleCreateClick}>
-              Create First User
-            </Button>
-          )}
-        />
-      ) : (
-        <DataTable rows={rows} headers={headers}>
-        {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
-          <TableContainer
-            title="System Users"
-            description="Manage users, roles, and cryptographic credentials."
-          >
-            <Table {...getTableProps()} className="user-management-table user-management-table--active">
-              <TableHead>
-                <TableRow>
-                  {headers.map((header) => {
-                    const { key, ...headerProps } = getHeaderProps({ header });
-                    return (
-                      <TableHeader key={key || header.key} {...headerProps}>
-                        {header.header}
-                      </TableHeader>
-                    );
-                  })}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const { key, ...rowProps } = getRowProps({ row });
-                  return (
-                    <TableRow key={key || row.id} {...rowProps}>
-                      {row.cells.map((cell) => (
-                        <TableCell key={cell.id}>{cell.value}</TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            {allActiveRows.length > pageSize && (
-              <Pagination
-                backwardText="Previous page"
-                forwardText="Next page"
-                itemsPerPageText="Items per page:"
-                page={currentPage}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 50]}
-                totalItems={allActiveRows.length}
-                onChange={({ page, pageSize: newPageSize }) => {
-                  setCurrentPage(page);
-                  setPageSize(newPageSize);
-                }}
-              />
-            )}
-          </TableContainer>
-          )}
-        </DataTable>
       )}
-
-      {/* Inactive Users Section */}
-      {inactiveRows.length > 0 && (
-        <div className="user-management-inactive">
-          <div className="user-management-inactive__header">
-            <h2 className="app-section-heading">Inactive users ({inactiveRows.length})</h2>
-            <Button
-              kind="ghost"
-              size="sm"
-              onClick={() => setShowInactive(!showInactive)}
-            >
-              {showInactive ? 'Hide' : 'Show'} Inactive Users
-            </Button>
-          </div>
-          {showInactive && (
-            <DataTable
-              rows={inactiveRows}
-              headers={INACTIVE_TABLE_HEADERS}
-            >
-              {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
-                <TableContainer
-                  title="Disabled Users"
-                  description="Users that have been deactivated. Reactivate them to restore access."
-                >
-                  <Table {...getTableProps()} className="user-management-table user-management-table--inactive">
-                    <TableHead>
-                      <TableRow>
-                        {headers.map((header) => {
-                          const { key, ...headerProps } = getHeaderProps({ header });
-                          return (
-                            <TableHeader key={key || header.key} {...headerProps}>
-                              {header.header}
-                            </TableHeader>
-                          );
-                        })}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rows.map((row) => {
-                        const { key, ...rowProps } = getRowProps({ row });
-                        return (
-                          <TableRow key={key || row.id} {...rowProps}>
-                            {row.cells.map((cell) => (
-                              <TableCell key={cell.id}>{cell.value}</TableCell>
-                            ))}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </DataTable>
-          )}
+      {loading && !hasLoaded ? (
+        <div role="status" aria-label="Loading users">
+          <DataTableSkeleton rowCount={10} columnCount={6} showHeader={false} showToolbar />
         </div>
+      ) : (
+        <UserDirectory
+          users={users}
+          columns={ACTIVE_TABLE_HEADERS}
+          activeRows={allActiveRows}
+          inactiveRows={inactiveRows}
+          currentUserId={authUser?.id}
+          busy={loading || refreshing}
+        />
       )}
 
       {/* Create User Modal */}
