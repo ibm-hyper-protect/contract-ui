@@ -112,7 +112,8 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
     if (!complete || !begin('preview')) return;
     setError('');
     try {
-      const data = await buildService.downloadContract(buildId);
+      // The build read endpoint includes YAML for assigned auditors; userdata is operator-only.
+      const data = await buildService.getBuild(buildId);
       const content = getContractContent(data);
       if (!active.current) return;
       setDetails((previous) => ({ ...previous, ...data }));
