@@ -1,3 +1,4 @@
+import '../styles/build-statistics.scss';
 import React, { useId, useMemo } from 'react';
 import {
   Layer, SkeletonText, Table, TableBody, TableCell, TableContainer,

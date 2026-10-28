@@ -6,7 +6,6 @@
 @use '@carbon/styles/scss/spacing' as spacing;
 @use '@carbon/styles/scss/type' as type;
 @use './styles/modern-theme.scss';
-@use './styles/build-statistics.scss';
 
 :root {
   --app-page-max-width: 1400px;
