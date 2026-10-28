@@ -1,3 +1,4 @@
+import '../styles/system-logs.scss';
 import React, { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Button,
