@@ -3,6 +3,7 @@
 );
 @use '@carbon/react';
 @use '@carbon/styles/scss/breakpoint' as breakpoint;
+@use './styles/contract-completion.scss';
 @use '@carbon/styles/scss/spacing' as spacing;
 @use '@carbon/styles/scss/type' as type;
 @use './styles/modern-theme.scss';

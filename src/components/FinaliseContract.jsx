@@ -1,265 +1,265 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Button,
-  InlineNotification,
+  InlineLoading,
+  Layer,
   Tag,
-  Tile,
   TextInput,
-  Modal,
-  CodeSnippet,
+  Tile,
 } from '@carbon/react';
-import {
-  CheckmarkFilled,
-  Upload,
-  View,
-  Download,
-} from '@carbon/icons-react';
+import { Checkmark, Renew, View } from '@carbon/icons-react';
 import buildService from '../services/buildService';
-import { formatDate } from '../utils/formatters';
+import { BUILD_STATUS, BUILD_STATUS_CONFIG } from '../utils/constants';
+import { getContractContent } from '../utils/contractContent';
+import {
+  CompletionNotice,
+  ContractMetadata,
+  ContractPreview,
+  useCompletionOperation,
+} from './ContractCompletion';
 
-const FinaliseContract = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate }) => {
-  const [liveStatus, setLiveStatus] = useState(buildStatusProp || '');
-  const [isFinalized, setIsFinalized] = useState(false);
-  const [finalizedAt, setFinalizedAt] = useState(null);
+function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
+  const [status, setStatus] = useState(buildStatus || '');
+  const [details, setDetails] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [statusError, setStatusError] = useState('');
+  const [passphrase, setPassphrase] = useState('');
+  const [invalid, setInvalid] = useState(false);
+  const [error, setError] = useState('');
+  const [accepted, setAccepted] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const { active, operation, begin, end } = useCompletionOperation();
+  const statusCallback = useRef(onStatusUpdate);
+  statusCallback.current = onStatusUpdate;
 
-  const [signingKeyPassphrase, setSigningKeyPassphrase] = useState('');
-
-  const [finalizing, setFinalizing] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
-  const [showContractPreview, setShowContractPreview] = useState(false);
-  const [contractContent, setContractContent] = useState('');
-  const [loadingContract, setLoadingContract] = useState(false);
-
-  const contractEditorLineRef = React.useRef(null);
-
-  const refreshBuildStatus = async () => {
-    const build = await buildService.getBuild(buildId);
-    const status = build?.status || '';
-    setLiveStatus(status);
-
-    const finalized = status === 'FINALIZED' || status === 'CONTRACT_DOWNLOADED';
-    setIsFinalized(finalized);
-    if (finalized) {
-      setFinalizedAt(build?.finalized_at || build?.updated_at || new Date().toISOString());
-    }
-
-    onStatusUpdate?.(status);
-  };
+  const complete =
+    accepted ||
+    status === BUILD_STATUS.FINALIZED ||
+    status === BUILD_STATUS.CONTRACT_DOWNLOADED;
+  const ready = status === BUILD_STATUS.ATTESTATION_KEY_REGISTERED && !complete;
+  const busy = !!operation;
 
   useEffect(() => {
-    setLiveStatus(buildStatusProp || '');
-  }, [buildStatusProp]);
+    setStatus(buildStatus || '');
+  }, [buildStatus]);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        await refreshBuildStatus();
-      } catch (_) {
-        // no-op
-      } finally {
-        setLoadingStatus(false);
-      }
+    let current = true;
+    buildService
+      .getBuild(buildId)
+      .then((build) => {
+        if (!current) return;
+        setStatus(build.status);
+        setDetails(build);
+        statusCallback.current?.(build.status);
+      })
+      .catch((err) => {
+        if (current) setStatusError(err.message);
+      })
+      .finally(() => {
+        if (current) setLoadingStatus(false);
+      });
+    return () => {
+      current = false;
     };
-    load();
   }, [buildId]);
 
-  const handleFinalize = async () => {
-    setError(null);
-    setSuccess(null);
-    setResult(null);
+  async function retryStatus() {
+    if (!begin('status')) return;
+    setStatusError('');
+    setLoadingStatus(true);
+    try {
+      const build = await buildService.getBuild(buildId);
+      if (!active.current) return;
+      setStatus(build.status);
+      setDetails(build);
+      statusCallback.current?.(build.status);
+    } catch (err) {
+      if (active.current) setStatusError(err.message);
+    } finally {
+      if (active.current) setLoadingStatus(false);
+      end();
+    }
+  }
 
-    if (!signingKeyPassphrase.trim()) {
-      setError('Signing key passphrase is required for contract signing.');
+  async function finalise(event) {
+    event.preventDefault();
+    if (!ready || loadingStatus || statusError || busy) return;
+    if (!passphrase) {
+      setInvalid(true);
       return;
     }
-
-    setFinalizing(true);
+    if (!begin('finalise')) return;
+    setError('');
     try {
-      const response = await buildService.finalizeBuildV2(buildId, {
-        signing_key_passphrase: signingKeyPassphrase.trim(),
+      const result = await buildService.finalizeBuildV2(buildId, {
+        signing_key_passphrase: passphrase,
       });
-
-      setResult(response || null);
-      setSuccess('Build finalized successfully. The contract has been signed.');
-
-      await refreshBuildStatus();
+      if (!active.current) return;
+      setAccepted(true);
+      setStatus(BUILD_STATUS.FINALIZED);
+      setPassphrase('');
+      setDetails(result || {});
+      statusCallback.current?.(BUILD_STATUS.FINALIZED);
     } catch (err) {
-      setError(`Finalize failed: ${err.message}`);
+      if (active.current) setError(err.message);
     } finally {
-      setFinalizing(false);
+      end();
     }
-  };
+  }
 
-  const handlePreviewContract = async () => {
-    setLoadingContract(true);
-    setError(null);
+  async function openPreview() {
+    if (!complete || !begin('preview')) return;
+    setError('');
     try {
       const data = await buildService.downloadContract(buildId);
-      // getUserData returns {contract_yaml, contract_hash}
-      let contract = data?.contract_yaml || data?.contract || data?.user_data || '';
-      
-      // Decode if base64 encoded
-      if (contract && typeof contract === 'string') {
-        const trimmed = contract.trim();
-        // Check if it looks like base64 (no newlines, no YAML keywords)
-        if (!trimmed.includes('\n') && !trimmed.includes('workload:') && !trimmed.includes('env:')) {
-          try {
-            contract = atob(trimmed);
-          } catch (_) {
-            // Not base64, use as-is
-          }
-        }
-      }
-      
-      setContractContent(contract);
-      setShowContractPreview(true);
+      const content = getContractContent(data);
+      if (!active.current) return;
+      setDetails((previous) => ({ ...previous, ...data }));
+      setPreview(content);
     } catch (err) {
-      setError(`Failed to load contract: ${err.message}`);
+      if (active.current) setError(err.message);
     } finally {
-      setLoadingContract(false);
+      end();
     }
-  };
-
-  const syncContractEditorScroll = (event) => {
-    if (!contractEditorLineRef.current) return;
-    contractEditorLineRef.current.scrollTop = event.target.scrollTop;
-  };
-
-  const isAvailable = liveStatus === 'ATTESTATION_KEY_REGISTERED' || isFinalized;
+  }
 
   return (
-    <div>
-      <h2 className="workflow-title">Finalise contract</h2>
-      <p className="workflow-description">
-        Finalize the build using backend-native contract assembly via <code>POST /builds/{'{id}'}/v2/finalize</code>.
-      </p>
-
-      {error && (
-        <InlineNotification
-          kind="error"
-          title="Error"
-          subtitle={error}
-          onCloseButtonClick={() => setError(null)}
-          lowContrast
-          className="workflow-notification"
-        />
-      )}
-
-      {success && (
-        <InlineNotification
-          kind="success"
-          title="Success"
-          subtitle={success}
-          onCloseButtonClick={() => setSuccess(null)}
-          lowContrast
-          className="workflow-notification"
-        />
-      )}
-
-      {!loadingStatus && isFinalized && (
-        <Tile className="workflow-complete-tile">
-          <div className="workflow-complete-tile__row">
-            <CheckmarkFilled size={20} className="workflow-complete-tile__icon" />
-            <div>
-              <strong>Build finalized</strong>
-              {finalizedAt && (
-                <div className="workflow-complete-tile__meta">
-                  Finalized at: {formatDate(finalizedAt, { second: '2-digit', timeZoneName: 'short' })}
-                </div>
-              )}
-              <div style={{ marginTop: '0.5rem' }}>
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  renderIcon={View}
-                  onClick={handlePreviewContract}
-                  disabled={loadingContract}
-                >
-                  {loadingContract ? 'Loading...' : 'Preview Contract'}
-                </Button>
-              </div>
-            </div>
-            <Tag type="green" className="workflow-complete-tile__tag">{liveStatus || 'FINALIZED'}</Tag>
-          </div>
-        </Tile>
-      )}
-
-      {!loadingStatus && !isFinalized && !isAvailable && (
-        <InlineNotification
-          kind="info"
-          title="Not yet available"
-          subtitle={`Requires build status "ATTESTATION_KEY_REGISTERED". Current: ${liveStatus}. Complete Add attestation key first.`}
-          lowContrast
-          hideCloseButton
-          className="workflow-notification"
-        />
-      )}
-
-      <div className={`workflow-body${isAvailable && !isFinalized ? '' : ' workflow-body--disabled'}`}>
-        <p className="workflow-step-copy">
-          The backend will automatically use the latest signing and attestation keys registered for this build.
-          Enter the signing key passphrase manually to decrypt the private key for contract signing.
-        </p>
-
-        <TextInput
-          id="finalize-signing-key-passphrase"
-          labelText="Signing Key Passphrase (Required)"
-          type="password"
-          value={signingKeyPassphrase}
-          onChange={(e) => setSigningKeyPassphrase(e.target.value)}
-          placeholder="Enter the passphrase used during signing key registration"
-          disabled={finalizing || isFinalized}
-          autoComplete="off"
-          helperText="This passphrase is not prefilled or cached. Enter it manually to decrypt the signing private key for contract signing."
-        />
-
-        <div className="workflow-inline-actions">
-          <Button
-            renderIcon={Upload}
-            onClick={handleFinalize}
-            disabled={finalizing || !isAvailable || isFinalized}
-          >
-            {finalizing ? 'Finalizing...' : 'Finalize Build'}
-          </Button>
-        </div>
-
-        {result?.contract_hash && (
-          <p className="workflow-step-copy">
-            Contract hash: <code>{result.contract_hash}</code>
+    <section
+      className="contract-completion"
+      aria-labelledby="finalise-contract-heading"
+    >
+      <header className="contract-completion__header">
+        <div>
+          <h2 id="finalise-contract-heading">Finalise contract</h2>
+          <p>
+            Assemble and sign the workload and environment into a deployment
+            contract.
           </p>
-        )}
-      </div>
-
-      <Modal
-        open={showContractPreview}
-        onRequestClose={() => setShowContractPreview(false)}
-        modalHeading="Final Contract Preview"
-        modalLabel="Signed contract YAML"
-        passiveModal
-        size="lg"
-      >
-        <p className="workflow-modal-copy">
-          This is the final signed contract YAML ready for deployment to IBM Hyper Protect Container Runtime.
-        </p>
-        {contractContent ? (
-          <CodeSnippet
-            type="multi"
-            feedback="Copied to clipboard"
-            wrapText={false}
-            style={{ marginTop: '1rem', maxHeight: '500px', overflow: 'auto' }}
+        </div>
+        <Tag type={complete ? 'green' : ready ? 'teal' : 'gray'}>
+          {complete
+            ? 'Finalised'
+            : ready
+              ? 'Ready to finalise'
+              : 'Waiting for prerequisites'}
+        </Tag>
+      </header>
+      {loadingStatus && <InlineLoading description="Checking build status…" />}
+      {statusError && (
+        <>
+          <CompletionNotice title="Build status unavailable">
+            {statusError}
+          </CompletionNotice>
+          <Button
+            kind="ghost"
+            renderIcon={Renew}
+            disabled={busy}
+            onClick={retryStatus}
           >
-            {contractContent}
-          </CodeSnippet>
-        ) : (
-          <p>Loading contract...</p>
-        )}
-      </Modal>
-    </div>
+            Retry status check
+          </Button>
+        </>
+      )}
+      {error && (
+        <CompletionNotice
+          title={
+            complete
+              ? 'Contract preview unavailable'
+              : 'Contract could not be finalised'
+          }
+        >
+          {error}
+        </CompletionNotice>
+      )}
+      {complete ? (
+        <Layer>
+          <Tile className="contract-completion__card">
+            <h3>Contract signed and ready</h3>
+            <p>
+              The assigned environment operator can now save the contract and
+              acknowledge its download.
+            </p>
+            <ContractMetadata data={details} />
+            <div className="contract-completion__actions">
+              <Button
+                kind="tertiary"
+                renderIcon={View}
+                onClick={openPreview}
+                disabled={busy || loadingStatus}
+              >
+                {operation === 'preview'
+                  ? 'Loading preview…'
+                  : 'Preview contract'}
+              </Button>
+            </div>
+          </Tile>
+        </Layer>
+      ) : (
+        <>
+          {!loadingStatus && !statusError && !ready && (
+            <CompletionNotice
+              kind="info"
+              title={
+                status === BUILD_STATUS.CANCELLED
+                  ? 'Build cancelled'
+                  : 'Complete the earlier build stages'
+              }
+            >
+              {status === BUILD_STATUS.CANCELLED
+                ? 'A cancelled build cannot be finalised.'
+                : `Register the signing key, submit the workload and environment, then add the attestation key. Current stage: ${BUILD_STATUS_CONFIG[status]?.label || 'Unknown'}.`}
+            </CompletionNotice>
+          )}
+          <Layer>
+            <Tile className="contract-completion__card">
+              <h3>Sign the contract</h3>
+              <p>
+                The latest signing and attestation keys registered for this
+                build will be used.
+              </p>
+              <form onSubmit={finalise}>
+                <fieldset
+                  disabled={!ready || loadingStatus || !!statusError || busy}
+                  className="contract-completion__fieldset"
+                >
+                  <TextInput
+                    id="finalise-passphrase"
+                    type="password"
+                    labelText="Signing key passphrase"
+                    value={passphrase}
+                    onChange={(event) => {
+                      setPassphrase(event.target.value);
+                      setInvalid(false);
+                    }}
+                    invalid={invalid}
+                    invalidText="Enter the signing key passphrase."
+                    autoComplete="off"
+                    helperText="Use the passphrase set when the signing key was registered. It is cleared after finalisation."
+                  />
+                  <div className="contract-completion__actions">
+                    <Button type="submit" renderIcon={Checkmark}>
+                      {operation === 'finalise'
+                        ? 'Finalising contract…'
+                        : 'Finalise contract'}
+                    </Button>
+                  </div>
+                </fieldset>
+              </form>
+            </Tile>
+          </Layer>
+        </>
+      )}
+      <ContractPreview
+        open={preview !== null}
+        content={preview || ''}
+        buildId={buildId}
+        onClose={() => setPreview(null)}
+      />
+    </section>
   );
-};
+}
 
-export default FinaliseContract;
+export default function FinaliseContract(props) {
+  return <FinaliseContractForm key={props.buildId} {...props} />;
+}
