@@ -1,411 +1,241 @@
+import '../styles/analytics.scss';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import PageHeader from '../components/PageHeader';
 import { DonutChart, GroupedBarChart } from '@carbon/charts-react';
 import {
-  Grid,
-  Column,
-  Tile,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Button
+  Tile, Tabs, TabList, Tab, TabPanels, TabPanel, Button, Tag,
+  InlineNotification, Layer, useTheme,
 } from '@carbon/react';
-import { WarningAlt, Locked, Unlocked, Renew } from '@carbon/icons-react';
+import { ArrowRight, CheckmarkFilled, Renew, WarningAlt } from '@carbon/icons-react';
+import CredentialReview from '../components/CredentialReview';
+import PageHeader from '../components/PageHeader';
+import { FullPageLoader } from '../components/LoadingSpinner';
+import { ErrorStatePanel, StatePanel } from '../components/StatePanel';
 import userService from '../services/userService';
 import buildService from '../services/buildService';
-import CredentialRotation from '../components/CredentialRotation';
-import { FullPageLoader } from '../components/LoadingSpinner';
-import { ErrorStatePanel } from '../components/StatePanel';
-import { BUILD_STATUS_CONFIG } from '../utils/constants';
+import rotationService from '../services/rotationService';
+import { BUILD_STATUS, BUILD_STATUS_CONFIG } from '../utils/constants';
+import { getRoleLabel, sortRolesByPriority } from '../utils/roles';
+import { getCredentialHealth } from '../utils/credentialHealth';
 
 const CHART_TOOLBAR_CONTROLS = [
-  { type: 'Export as CSV' },
-  { type: 'Export as PNG' },
-  { type: 'Export as JPG' },
-  { type: 'Make fullscreen' }
+  { type: 'Export as CSV' }, { type: 'Export as PNG' },
+  { type: 'Export as JPG' }, { type: 'Make fullscreen' },
 ];
+const STATUS_COLORS = {
+  gray: '#525252', purple: '#8a3ffc', blue: '#0f62fe', cyan: '#1192e8',
+  teal: '#009d9a', green: '#24a148', red: '#da1e28',
+};
+const TERMINAL_STATUSES = new Set([
+  BUILD_STATUS.FINALIZED, BUILD_STATUS.CONTRACT_DOWNLOADED, BUILD_STATUS.CANCELLED,
+]);
 
-/**
- * AdminAnalytics View
- * Integrated admin dashboard with analytics and credential rotation monitoring
- * Features: Build/user statistics, security alerts, credential rotation management
- */
 const AdminAnalytics = () => {
+  const { theme } = useTheme();
   const [selectedTab, setSelectedTab] = useState(0);
+  const [credentialFilter, setCredentialFilter] = useState('attention');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  
-  // State for analytics data
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [users, setUsers] = useState([]);
   const [builds, setBuilds] = useState([]);
+  const [keyInventory, setKeyInventory] = useState(null);
 
   const loadAnalytics = useCallback(async ({ showLoader = false } = {}) => {
+    if (showLoader) setLoading(true);
+    else setRefreshing(true);
+    setError(null);
     try {
-      if (showLoader) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
-      setError(null);
-
-      const [usersData, buildsData] = await Promise.all([
-        userService.listUsers(),
-        buildService.getBuilds()
+      const [nextUsers, nextBuilds] = await Promise.all([
+        userService.listUsers(), buildService.getBuilds(),
       ]);
-
-      setUsers(usersData);
-      setBuilds(buildsData);
+      // Older servers use the user snapshot; device-key support supplies a full inventory.
+      // Commit the snapshot together so counts and device actions agree.
+      const nextKeys = (await rotationService.getKeyInventory?.(nextUsers)) ?? null;
+      setKeyInventory(nextKeys);
+      setUsers(nextUsers);
+      setBuilds(nextBuilds);
+      setHasLoaded(true);
     } catch (err) {
-      console.error('Failed to load analytics:', err);
-      setError(err.message || 'Failed to load analytics data');
+      setError(err.message || 'Unable to refresh analytics. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadAnalytics({ showLoader: true });
-  }, [loadAnalytics]);
+  useEffect(() => { loadAnalytics({ showLoader: true }); }, [loadAnalytics]);
 
-  // Process data for Donut Chart (Build Status)
-  const buildStatusCount = useMemo(() => (
-    builds.reduce((acc, build) => {
-      const statusName = (build.status || 'UNKNOWN').replace(/_/g, ' ');
-      acc[statusName] = (acc[statusName] || 0) + 1;
-      return acc;
-    }, {})
-  ), [builds]);
+  // Derive counts together so the review table always agrees with the overview.
+  const health = useMemo(() => getCredentialHealth(users, Date.now(), keyInventory), [users, keyInventory]);
+  const activeUsers = users.filter(user => user.is_active).length;
+  const activeBuilds = builds.filter(build => !TERMINAL_STATUSES.has(build.status)).length;
+  const readyContracts = builds.filter(build => build.status === BUILD_STATUS.FINALIZED).length;
+  const downloadedContracts = builds.filter(build => build.status === BUILD_STATUS.CONTRACT_DOWNLOADED).length;
 
-  const donutData = useMemo(
-    () => Object.entries(buildStatusCount).map(([group, value]) => ({ group, value })),
-    [buildStatusCount]
-  );
+  const buildCounts = useMemo(() => builds.reduce((counts, build) => {
+    const status = build.status || 'UNKNOWN';
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {}), [builds]);
+  const donutData = useMemo(() => Object.entries(buildCounts).map(([status, value]) => ({
+    group: BUILD_STATUS_CONFIG[status]?.label || status.replace(/_/g, ' '), value,
+  })), [buildCounts]);
+  const donutOptions = useMemo(() => ({
+    title: 'Build stages', theme, resizable: true, height: '360px',
+    donut: { center: { label: 'Builds' } },
+    legend: { truncation: { type: 'none' } },
+    toolbar: { controls: CHART_TOOLBAR_CONTROLS },
+    color: { scale: Object.fromEntries(Object.keys(buildCounts).map(status => [
+      BUILD_STATUS_CONFIG[status]?.label || status.replace(/_/g, ' '),
+      STATUS_COLORS[BUILD_STATUS_CONFIG[status]?.kind] || STATUS_COLORS.gray,
+    ])) },
+  }), [buildCounts, theme]);
 
-  // Map Carbon color kinds to actual hex colors for consistency with BuildManagement
-  const carbonColorMap = {
-    'gray': '#525252',      // gray-70
-    'purple': '#8a3ffc',    // purple-60
-    'blue': '#0f62fe',      // blue-60
-    'cyan': '#1192e8',      // cyan-50
-    'teal': '#009d9a',      // teal-50
-    'green': '#24a148',     // green-50
-    'red': '#da1e28'        // red-60
-  };
-
-  const donutOptions = useMemo(() => {
-    // Create color scale based on BUILD_STATUS_CONFIG
-    const colorScale = {};
-    Object.entries(buildStatusCount).forEach(([statusName]) => {
-      // Convert display name back to status key (e.g., "SIGNING KEY REGISTERED" -> "SIGNING_KEY_REGISTERED")
-      const statusKey = statusName.replace(/ /g, '_').toUpperCase();
-      const config = BUILD_STATUS_CONFIG[statusKey];
-      if (config && config.kind) {
-        colorScale[statusName] = carbonColorMap[config.kind] || carbonColorMap['gray'];
-      }
-    });
-
-    return {
-      title: 'Build Status Distribution',
-      resizable: true,
-      donut: {
-        center: {
-          label: 'Builds'
-        }
-      },
-      height: '400px',
-      legend: {
-        enabled: true,
-        truncation: {
-          type: 'none',
-          threshold: 1000,
-          numCharacter: 1000
-        }
-      },
-      tooltip: {
-        truncation: {
-          type: 'none',
-          threshold: 1000,
-          numCharacter: 1000
-        }
-      },
-      toolbar: {
-        enabled: true,
-        controls: CHART_TOOLBAR_CONTROLS
-      },
-      color: {
-        scale: colorScale
-      }
-    };
-  }, [buildStatusCount]);
-
-  // Process data for Bar Chart (Users by Role)
   const barData = useMemo(() => {
-    const roleStats = {};
-    users.forEach((user) => {
-      const roles = user.roles && user.roles.length > 0 ? user.roles : ['No Role'];
-      roles.forEach((role) => {
-        const roleName = role.replace(/_/g, ' ');
-        if (!roleStats[roleName]) {
-          roleStats[roleName] = { active: 0, inactive: 0 };
-        }
-        if (user.is_active) {
-          roleStats[roleName].active += 1;
-        } else {
-          roleStats[roleName].inactive += 1;
-        }
+    const counts = {};
+    users.forEach(user => {
+      const roles = user.roles?.length ? [...new Set(user.roles)] : ['Unassigned'];
+      roles.forEach(role => {
+        counts[role] ||= { enabled: 0, disabled: 0 };
+        counts[role][user.is_active ? 'enabled' : 'disabled'] += 1;
       });
     });
-
-    const rows = [];
-    Object.entries(roleStats).forEach(([roleName, stats]) => {
-      rows.push({ group: 'Active', key: roleName, value: stats.active });
-      rows.push({ group: 'Inactive', key: roleName, value: stats.inactive });
-    });
-    return rows;
+    return sortRolesByPriority(Object.keys(counts)).flatMap(role => [
+      { group: 'Enabled', key: getRoleLabel(role), value: counts[role].enabled },
+      { group: 'Disabled', key: getRoleLabel(role), value: counts[role].disabled },
+    ]);
   }, [users]);
-
-  const maxBarValue = useMemo(
-    () => Math.max(...barData.map((item) => item.value), 0),
-    [barData]
-  );
-
   const barOptions = useMemo(() => ({
-    title: 'Users by Persona Role',
+    title: 'Users by role', theme, resizable: true, height: '360px',
     axes: {
-      left: {
-        mapsTo: 'value',
-        ticks: {
-          min: 0,
-          max: maxBarValue + 1,
-          values: Array.from({ length: maxBarValue + 2 }, (_, i) => i)
-        }
-      },
-      bottom: {
-        mapsTo: 'key',
-        scaleType: 'labels',
-        truncation: {
-          type: 'none'
-        }
-      }
+      left: { mapsTo: 'key', scaleType: 'labels', truncation: { type: 'none' } },
+      bottom: { mapsTo: 'value', includeZero: true, ticks: { formatter: value => Number.isInteger(value) ? value : '' } },
     },
-    height: '400px',
-    color: {
-      scale: {
-        Active: '#24a148',
-        Inactive: '#da1e28'
-      }
-    },
-    bars: {
-      maxWidth: 50
-    },
-    legend: {
-      truncation: {
-        type: 'none'
-      }
-    },
-    toolbar: {
-      enabled: true,
-      controls: CHART_TOOLBAR_CONTROLS
-    }
-  }), [maxBarValue]);
+    bars: { maxWidth: 18 },
+    color: { scale: { Enabled: '#0f62fe', Disabled: '#8d8d8d' } },
+    toolbar: { controls: CHART_TOOLBAR_CONTROLS },
+  }), [theme]);
 
-  // Calculate metrics
-  const expiredKeys = useMemo(() => users.filter((u) => {
-    // Include users without registered keys (first-login users)
-    if (!u.public_key_fingerprint) return true;
-    if (!u.public_key_expires_at) return false;
-    return new Date(u.public_key_expires_at) < new Date();
-  }).length, [users]);
-
-  const expiredPasswords = useMemo(() => users.filter((u) => {
-    // Include users who must change password (first-login users)
-    if (u.must_change_password) return true;
-    if (!u.password_expires_at) return false;
-    return new Date(u.password_expires_at) < new Date();
-  }).length, [users]);
-
-  const activeBuilds = useMemo(
-    () => builds.filter((b) => !['FINALIZED', 'CONTRACT_DOWNLOADED', 'CANCELLED'].includes(b.status)).length,
-    [builds]
-  );
-
-  const completedContracts = useMemo(
-    () => (buildStatusCount['FINALIZED'] || 0) + (buildStatusCount['CONTRACT DOWNLOADED'] || 0),
-    [buildStatusCount]
-  );
-
-  const activeUsers = useMemo(() => users.filter((u) => u.is_active).length, [users]);
-  const disabledUsers = useMemo(() => users.filter((u) => !u.is_active).length, [users]);
-
+  const reviewCredentials = filter => {
+    setCredentialFilter(filter);
+    setSelectedTab(1);
+  };
   const pageHeader = (
     <PageHeader
       title="Admin diagnostics & analytics"
-      description="Monitor builds, users, and credential health."
+      description="Monitor build activity and keep account credentials up to date."
+      actions={
+        <Button kind="tertiary" size="md" renderIcon={Renew}
+          disabled={loading || refreshing} onClick={() => loadAnalytics()}>
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </Button>
+      }
     />
   );
 
-  // Render loading/error states after all hooks to preserve stable hook order.
   if (loading) {
-    return (
-      <div className="app-page app-page--wide">
-        {pageHeader}
-        <FullPageLoader description="Loading analytics..." />
-      </div>
-    );
+    return <div className="app-page app-page--wide analytics-page">{pageHeader}<FullPageLoader description="Loading analytics…" /></div>;
   }
-
-  if (error) {
+  if (error && !hasLoaded) {
     return (
-      <div className="app-page app-page--wide">
+      <div className="app-page app-page--wide analytics-page">
         {pageHeader}
-        <ErrorStatePanel
-          title="Failed to Load Analytics"
-          description={error}
-          action={<Button onClick={() => loadAnalytics({ showLoader: true })}>Retry</Button>}
-        />
+        <ErrorStatePanel title="Unable to load analytics" description={error}
+          action={<Button onClick={() => loadAnalytics({ showLoader: true })}>Retry</Button>} />
       </div>
     );
   }
 
   return (
-    <div className="app-page app-page--wide">
+    <div className="app-page app-page--wide analytics-page">
       {pageHeader}
-      
-      <Tabs selectedIndex={selectedTab} onChange={(e) => setSelectedTab(e.selectedIndex)}>
+      {error && <InlineNotification className="analytics-notification" kind="error" lowContrast hideCloseButton
+        title="Refresh failed" subtitle={`${error} Showing the last loaded data.`} />}
+      <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}>
         <TabList aria-label="Admin analytics tabs" contained>
-          <Tab>Overview & Statistics</Tab>
-          <Tab>Credential Rotation</Tab>
+          <Tab>Overview</Tab>
+          <Tab>Credential health</Tab>
         </TabList>
-        
         <TabPanels>
-          {/* Overview & Statistics Tab */}
           <TabPanel>
-            <div className="admin-analytics-tab-content">
-              <div className="admin-analytics-overview-actions">
-                <Button
-                  kind="tertiary"
-                  size="md"
-                  renderIcon={Renew}
-                  onClick={() => loadAnalytics({ showLoader: false })}
-                  disabled={refreshing}
-                >
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
-                </Button>
-              </div>
-
-              {/* Key Metrics Row */}
-              <Grid narrow className="admin-analytics-grid-spacing">
-                <Column lg={4}>
-                  <Tile className="analytics-kpi-tile">
-                    <h3 className="analytics-kpi-title">Total Users</h3>
-                    <p className="analytics-kpi-value">{users.length}</p>
-                  </Tile>
-                </Column>
-                <Column lg={4}>
-                  <Tile className="analytics-kpi-tile">
-                    <h3 className="analytics-kpi-title">Active Builds</h3>
-                    <p className="analytics-kpi-value">{activeBuilds}</p>
-                  </Tile>
-                </Column>
-                <Column lg={4}>
-                  <Tile className="analytics-kpi-tile">
-                    <h3 className="analytics-kpi-title">Completed Contracts</h3>
-                    <p className="analytics-kpi-value">{completedContracts}</p>
-                  </Tile>
-                </Column>
-                <Column lg={4}>
-                  <Tile className="analytics-kpi-tile">
-                    <h3 className="analytics-kpi-title">Total Builds</h3>
-                    <p className="analytics-kpi-value">{builds.length}</p>
-                  </Tile>
-                </Column>
-              </Grid>
-
-              {/* User & Security Status Row */}
-              <Grid narrow className="admin-analytics-grid-spacing">
-                <Column lg={4}>
-                  <Tile className="analytics-kpi-tile analytics-kpi-tile--ok">
-                    <h3 className="analytics-kpi-title">Active Users</h3>
-                    <p className="analytics-kpi-value">{activeUsers}</p>
-                    <p className="analytics-kpi-caption">Accounts currently enabled.</p>
-                  </Tile>
-                </Column>
-                <Column lg={4}>
-                  <Tile className={`analytics-kpi-tile ${disabledUsers > 0 ? 'analytics-kpi-tile--danger' : 'analytics-kpi-tile--ok'}`}>
-                    <h3 className="analytics-kpi-title">Disabled Users</h3>
-                    <p className="analytics-kpi-value">{disabledUsers}</p>
-                    <p className="analytics-kpi-caption">
-                      {disabledUsers > 0 ? 'Review and reactivate if needed.' : 'No disabled accounts.'}
-                    </p>
-                  </Tile>
-                </Column>
-                <Column lg={4}>
-                  <Tile className={`analytics-kpi-tile ${expiredKeys > 0 ? 'analytics-kpi-tile--danger' : 'analytics-kpi-tile--ok'}`}>
-                    <div className="analytics-kpi-header">
-                      {expiredKeys > 0 ? <WarningAlt size={32} /> : <Locked size={32} />}
-                      <div>
-                        <h3 className="analytics-kpi-title">Expired Public Keys</h3>
-                        <p className="analytics-kpi-value admin-analytics-security-value">{expiredKeys}</p>
-                        <p className="analytics-kpi-caption">
-                          {expiredKeys > 0
-                            ? 'Action required: renew user keys.'
-                            : 'No key expiry action needed.'}
-                        </p>
+            <Layer className="analytics-content">
+              <section aria-labelledby="analytics-health-heading">
+                <Tile className="analytics-health">
+                  <div className="analytics-section-header">
+                    <div>
+                      <div className="analytics-health__title">
+                        {health.attentionUsers ? <WarningAlt size={20} /> : <CheckmarkFilled size={20} />}
+                        <h2 id="analytics-health-heading" className="analytics-section-heading">Credential health</h2>
+                        <Tag size="sm" type={health.attentionUsers ? 'warm-gray' : 'green'}>
+                          {health.attentionUsers ? 'Needs attention' : activeUsers ? 'Up to date' : 'No enabled users'}
+                        </Tag>
                       </div>
+                      <p className="analytics-section-copy">
+                        {health.attentionUsers
+                          ? `${health.attentionUsers} enabled ${health.attentionUsers === 1 ? 'user needs' : 'users need'} a credential update or review.`
+                          : 'No credential issues found for enabled accounts.'}
+                      </p>
                     </div>
-                  </Tile>
-                </Column>
-                <Column lg={4}>
-                  <Tile className={`analytics-kpi-tile ${expiredPasswords > 0 ? 'analytics-kpi-tile--danger' : 'analytics-kpi-tile--ok'}`}>
-                    <div className="analytics-kpi-header">
-                      {expiredPasswords > 0 ? <Unlocked size={32} /> : <Locked size={32} />}
-                      <div>
-                        <h3 className="analytics-kpi-title">Expired Passwords</h3>
-                        <p className="analytics-kpi-value admin-analytics-security-value">{expiredPasswords}</p>
-                        <p className="analytics-kpi-caption">
-                          {expiredPasswords > 0
-                            ? 'Action required: users must change passwords.'
-                            : 'No password expiry action needed.'}
-                        </p>
+                    <Button kind="ghost" size="md" renderIcon={ArrowRight} onClick={() => reviewCredentials('attention')}>Review credentials</Button>
+                  </div>
+                  <div className="analytics-health__metrics">
+                    {[
+                      { label: 'Passwords to review', value: health.attentionPasswords, detail: 'Expired, update required or expiry unavailable', filter: 'password' },
+                      { label: 'Public keys to review', value: health.attentionKeys, detail: 'Expired, unregistered or expiry unavailable', filter: 'key' },
+                      { label: 'Users expiring soon', value: health.expiringUsers, detail: 'Password or public key expires within 30 days', filter: 'soon' },
+                    ].map(metric => (
+                      <div className="analytics-health__metric" key={metric.label}>
+                        <p className="analytics-metric-label">{metric.label}</p>
+                        <p className="analytics-metric-value">{metric.value}</p>
+                        <p className="analytics-section-copy">{metric.detail}</p>
+                        <Button kind="ghost" size="sm" renderIcon={ArrowRight} onClick={() => reviewCredentials(metric.filter)}>
+                          {metric.filter === 'soon' ? 'View upcoming expiries' : `Review ${metric.filter === 'key' ? 'public keys' : 'passwords'}`}
+                        </Button>
                       </div>
-                    </div>
-                  </Tile>
-                </Column>
-              </Grid>
+                    ))}
+                  </div>
+                </Tile>
+              </section>
 
-              {/* Charts Row */}
-              <Grid narrow>
-                <Column lg={8}>
-                  <Tile className="admin-analytics-chart-tile">
-                    <div className="admin-analytics-chart-body">
-                      {typeof window !== 'undefined' && <DonutChart data={donutData} options={donutOptions} />}
-                    </div>
-                  </Tile>
-                </Column>
-                <Column lg={8}>
-                  <Tile className="admin-analytics-chart-tile">
-                    <div className="admin-analytics-chart-body">
-                      {typeof window !== 'undefined' && <GroupedBarChart data={barData} options={barOptions} />}
-                    </div>
-                  </Tile>
-                </Column>
-              </Grid>
-            </div>
+              <section aria-labelledby="analytics-activity-heading">
+                <h2 id="analytics-activity-heading" className="analytics-section-heading analytics-section-title">Activity overview</h2>
+                <div className="analytics-metrics">
+                  {[
+                    { label: 'Total users', value: users.length, detail: `${activeUsers} enabled · ${users.length - activeUsers} disabled` },
+                    { label: 'Active builds', value: activeBuilds, detail: `${builds.length} builds in total` },
+                    { label: 'Ready to download', value: readyContracts, detail: 'Finalized contracts awaiting download' },
+                    { label: 'Downloaded contracts', value: downloadedContracts, detail: 'Contract download acknowledged' },
+                  ].map(metric => (
+                    <Tile className="analytics-metric" key={metric.label}>
+                      <h3 className="analytics-metric-label">{metric.label}</h3>
+                      <p className="analytics-metric-value">{metric.value}</p>
+                      <p className="analytics-section-copy">{metric.detail}</p>
+                    </Tile>
+                  ))}
+                </div>
+              </section>
+
+              <section className="analytics-charts" aria-label="Build and user distributions">
+                <Tile className="analytics-chart">
+                  {builds.length ? <DonutChart data={donutData} options={donutOptions} /> : (
+                    <StatePanel title="No builds yet" description="Build stages will appear here when a build is created." />
+                  )}
+                </Tile>
+                <Tile className="analytics-chart">
+                  {users.length ? <>
+                    <GroupedBarChart data={barData} options={barOptions} />
+                    <p className="analytics-section-copy analytics-chart-note">Users with several roles appear in each role.</p>
+                  </> : <StatePanel title="No users yet" description="The role distribution will appear here when users are added." />}
+                </Tile>
+              </section>
+            </Layer>
           </TabPanel>
-          
-          {/* Credential Rotation Tab */}
           <TabPanel>
-            <div className="admin-analytics-tab-content">
-              <Grid narrow>
-                <Column lg={16}>
-                  <CredentialRotation />
-                </Column>
-              </Grid>
-            </div>
+            <Layer className="analytics-content">
+              <CredentialReview key={credentialFilter} health={health} initialFilter={credentialFilter}
+                refreshing={refreshing} onRefresh={loadAnalytics} />
+            </Layer>
           </TabPanel>
         </TabPanels>
       </Tabs>
