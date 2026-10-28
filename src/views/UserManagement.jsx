@@ -1,3 +1,4 @@
+import '../styles/user-directory.scss';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PageHeader from '../components/PageHeader';
 import {
