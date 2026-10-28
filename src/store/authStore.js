@@ -17,6 +17,8 @@ export const useAuthStore = create(
       mustChangePassword: false,
       publicKeyExpiry: null,
       publicKeyFingerprint: null,
+      localIdentityKey: null,
+      identityKeysLoaded: false,
       requiresSetup: false,
       setupPending: [],
 
@@ -35,6 +37,8 @@ export const useAuthStore = create(
       setAuth: (user, token) => set({
         user,
         token,
+        localIdentityKey: null,
+        identityKeysLoaded: false,
         isAuthenticated: true,
         roles: user.roles || [],
         mustChangePassword: user.must_change_password || false,
@@ -49,6 +53,8 @@ export const useAuthStore = create(
       clearAuth: () => set({
         user: null,
         token: null,
+        localIdentityKey: null,
+        identityKeysLoaded: false,
         isAuthenticated: false,
         roles: [],
         mustChangePassword: false,
@@ -66,6 +72,30 @@ export const useAuthStore = create(
       updateUser: (updates) => set((state) => ({
         user: state.user ? { ...state.user, ...updates } : null
       })),
+
+      // Account readiness comes from all active keys; device readiness uses the local key.
+      setIdentityKeys: (keys, localIdentityKey) => set((state) => {
+        const active = keys.filter(key => !key.revoked_at && new Date(key.expires_at).getTime() > Date.now());
+        const newest = active[0];
+        const pending = (state.setupPending || []).filter(step => step !== 'public_key_registration');
+        if (active.length === 0) pending.push('public_key_registration');
+        return {
+          localIdentityKey,
+          identityKeysLoaded: true,
+          publicKeyExpiry: localIdentityKey?.expires_at || null,
+          publicKeyFingerprint: localIdentityKey?.fingerprint || null,
+          setupPending: pending,
+          requiresSetup: pending.length > 0,
+          user: state.user ? {
+            ...state.user,
+            active_key_count: active.length,
+            public_key_fingerprint: newest?.fingerprint || null,
+            public_key_expires_at: newest?.expires_at || null,
+            setup_pending: pending,
+            requires_setup: pending.length > 0
+          } : null
+        };
+      }),
 
       updatePublicKey: (fingerprint, expiresAt) => set((state) => {
         const setupPending = (state.setupPending || []).filter(s => s !== 'public_key_registration');
@@ -158,7 +188,8 @@ export const useAuthStore = create(
 
       isKeyExpired: () => {
         const state = get();
-        const expiry = state.publicKeyExpiry || state.user?.public_key_expires_at;
+        if (state.identityKeysLoaded && (!state.localIdentityKey || state.localIdentityKey.revoked_at)) return true;
+        const expiry = state.identityKeysLoaded ? state.localIdentityKey?.expires_at : state.user?.public_key_expires_at;
         if (!expiry) return true;
         return new Date(expiry) < new Date();
       },
@@ -202,7 +233,9 @@ export const useAuthStore = create(
         const needsPasswordChange = !!(state.mustChangePassword || state.user?.must_change_password);
         const hasFingerprint = !!(state.publicKeyFingerprint || state.user?.public_key_fingerprint);
         const keyExpired = state.isKeyExpired();
-        const needsPublicKey = !hasFingerprint || keyExpired;
+        const needsPublicKey = typeof state.user?.active_key_count === 'number'
+          ? state.user.active_key_count === 0
+          : !hasFingerprint || keyExpired;
 
         if (needsPasswordChange && needsPublicKey) return SETUP_PENDING_BOTH;
         if (needsPasswordChange) return SETUP_PENDING_PASSWORD;

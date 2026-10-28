@@ -72,9 +72,9 @@ const BUILD_ACTION_RULES = [
 
 const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
   const authUser = useAuthStore((state) => state.user);
-  const publicKeyExpiry = useAuthStore((state) =>
-    state.publicKeyExpiry || state.user?.public_key_expires_at || null
-  );
+  const localKey = useAuthStore(state => state.localIdentityKey);
+  const keysLoaded = useAuthStore(state => state.identityKeysLoaded);
+  const publicKeyExpiry = keysLoaded ? localKey?.expires_at : null;
   const isKeyExpired = useAuthStore((state) => state.isKeyExpired());
   const isPasswordExpired = useAuthStore((state) => state.isPasswordExpired());
   const isSetupRequired = useAuthStore((state) => state.isSetupRequired());
@@ -117,7 +117,7 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
       name: authUser?.full_name || authUser?.name || defaultUserName,
       email: authUser?.email || userEmail,
       role: userRole,
-      keyStatus: !(publicKeyExpiry || authUser?.public_key_fingerprint) ? 'Not Registered' : (isKeyExpired ? 'Expired' : 'Active'),
+      keyStatus: !keysLoaded ? 'Checking' : !localKey ? 'Not Registered' : localKey.revoked_at ? 'Revoked' : (isKeyExpired ? 'Expired' : 'Active'),
       keyExpiresAt: publicKeyExpiry || null,
       keyDaysUntilExpiry,
       passwordLastChangedAt: lastPasswordChange,
@@ -131,6 +131,8 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
     userEmail,
     userRole,
     publicKeyExpiry,
+    keysLoaded,
+    localKey,
     isKeyExpired,
     lastPasswordChange,
     passwordExpiresAt,
@@ -186,13 +188,13 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
     }
 
     // Check key status
-    if (currentUser.keyStatus === 'Expired') {
+    if (['Expired', 'Revoked', 'Not Registered'].includes(currentUser.keyStatus)) {
       actions.push({
         type: 'critical',
         icon: Unlocked,
-        title: 'Public Key Expired',
-        description: 'Your cryptographic key has expired. Generate a new keypair.',
-        action: 'Rotate Keys',
+        title: 'Set up this device’s key',
+        description: 'Open Account Settings to register, import, or select an active device key.',
+        action: 'Manage Device Keys',
         onClick: () => onNavigate('SETTINGS')
       });
     } else if (currentUser.keyStatus === 'Active') {
@@ -205,7 +207,7 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
           icon: Time,
           title: 'Key Expiring Soon',
           description: `Your public key expires in ${daysUntilExpiry} days (${formatDateOnly(currentUser.keyExpiresAt)}).`,
-          action: 'Rotate Keys',
+          action: 'Manage Device Keys',
           onClick: () => onNavigate('SETTINGS')
         });
       }
@@ -260,8 +262,8 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
   const getStatusDisplay = useCallback((status) => {
     if (status === 'Active') {
       return { color: 'green', icon: Checkmark, text: 'Active' };
-    } else if (status === 'Expired') {
-      return { color: 'red', icon: WarningAlt, text: 'Expired' };
+    } else if (status === 'Expired' || status === 'Revoked') {
+      return { color: 'red', icon: WarningAlt, text: status };
     } else if (status === 'Not Registered') {
       return { color: 'gray', icon: Unlocked, text: 'Not Registered' };
     }
@@ -350,7 +352,7 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
                 ) : (
                   <Unlocked size={20} className="home-status-icon" />
                 )}
-                <strong>Public Key Status</strong>
+                <strong>This Device’s Key</strong>
               </div>
               <div className="home-key-status-content">
                 <Tag type={keyStatusDisplay.color} className="home-status-tag">
