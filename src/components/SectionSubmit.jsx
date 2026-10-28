@@ -1,676 +1,608 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Button,
+  CodeSnippet,
+  FileUploaderDropContainer,
+  FileUploaderItem,
+  InlineLoading,
   InlineNotification,
-  Tag,
-  Tile,
-  RadioButtonGroup,
+  Layer,
+  Modal,
   RadioButton,
+  RadioButtonGroup,
   Select,
   SelectItem,
-  FileUploader,
-  Modal,
-  CodeSnippet,
+  Tag,
+  TextArea,
+  Tile,
 } from '@carbon/react';
-import { Upload, CheckmarkFilled, Document, View, Download } from '@carbon/icons-react';
+import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
-import AuditorSection from './AuditorSection';
+import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
-
-// ── Workload templates ────────────────────────────────────────────────────────
-
-const WORKLOAD_TEMPLATES = {
-  default: {
-    label: 'Workload Template',
-    templateType: 'workload',
-  },
-};
-
-// ── Environment templates ─────────────────────────────────────────────────────
-
-const ENV_TEMPLATES = {
-  default: {
-    label: 'Environment Template',
-    templateType: 'env',
-  },
-};
-
-// ── Role config ───────────────────────────────────────────────────────────────
+import {
+  hasCertificateContent,
+  validateSubmissionFile,
+  validateSubmissionYaml,
+} from '../utils/submissionForm';
+import AuditorSection from './AuditorSection';
 
 const ROLE_CONFIG = {
   SOLUTION_PROVIDER: {
-    title: 'Encrypted Workload',
-    description: 'Upload plaintext workload YAML and certificate PEM. Backend performs encryption and stores only encrypted payload.',
-    requiredBuildStatus: 'SIGNING_KEY_REGISTERED',
-    needsCert: true,
-    templates: WORKLOAD_TEMPLATES,
+    label: 'Workload',
     fileLabel: 'workload',
-    addYamlButtonLabel: 'Add Workload YAML',
+    templateType: 'workload',
+    requiredStatus: BUILD_STATUS.SIGNING_KEY_REGISTERED,
+    prerequisite: 'The auditor must register a signing key before you can add the workload.',
   },
   DATA_OWNER: {
-    title: 'Add Environment',
-    description: 'Upload plaintext environment YAML and certificate PEM. Backend performs encryption and stores only encrypted payload.',
-    requiredBuildStatus: 'WORKLOAD_SUBMITTED',
-    needsCert: true,
-    templates: ENV_TEMPLATES,
+    label: 'Environment',
     fileLabel: 'environment',
-    addYamlButtonLabel: 'Add Environment YAML',
-  },
-  AUDITOR: {
-    title: 'Sign & Add Attestation',
-    description: 'Upload your attestation YAML file and select an encryption certificate to encrypt and submit the attestation section.',
-    requiredBuildStatus: 'ENVIRONMENT_STAGED',
-    needsCert: true,
-    templates: null,
-    fileLabel: 'attestation',
+    templateType: 'env',
+    requiredStatus: BUILD_STATUS.WORKLOAD_SUBMITTED,
+    prerequisite:
+      'The solution provider must submit the workload before you can add the environment.',
   },
 };
 
-const SectionSubmit = ({ buildId, buildStatus: buildStatusProp, personaRole, onStatusUpdate }) => {
+function SubmissionSummary({ yamlName, certificateName, statusLabel }) {
+  return (
+    <dl className="submission-summary">
+      {[
+        ['YAML file', yamlName || 'Not added'],
+        ['Encryption certificate', certificateName || 'Not selected'],
+        ['Build stage', statusLabel],
+      ].map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const config = ROLE_CONFIG[personaRole];
-  const supportsBackendTemplate = personaRole === 'SOLUTION_PROVIDER' || personaRole === 'DATA_OWNER';
-
-  // Workload file
-  const [workloadContent, setWorkloadContent] = useState('');
-  const [workloadFileName, setWorkloadFileName] = useState('');
-
-  // Certificate source: 'builtin' | 'custom'
-  const [certSource, setCertSource] = useState('custom');
-  const [selectedPlatformId, setSelectedPlatformId] = useState(PLATFORMS[0].id);
-  const [selectedCertId, setSelectedCertId] = useState('');
-  const [customCertContent, setCustomCertContent] = useState('');
-  const [customCertFileName, setCustomCertFileName] = useState('');
-
-  // Submission preparation
-  const [encrypting, setEncrypting] = useState(false);
-  const [encryptedResult, setEncryptedResult] = useState(null);
-  const [wrappedSymmetricKey, setWrappedSymmetricKey] = useState(null);
-  const topRef = useRef(null);
-  const uploadEditorLineRef = useRef(null);
-
-  // Preview modal
-  const [showPreview, setShowPreview] = useState(false);
-  const [showSubmittedPreview, setShowSubmittedPreview] = useState(false);
-  const [showUploadEditor, setShowUploadEditor] = useState(false);
-  const [uploadDraftContent, setUploadDraftContent] = useState('');
-  const [uploadDraftFileName, setUploadDraftFileName] = useState('');
-  const [uploadEditorLabel, setUploadEditorLabel] = useState('Editable file preview');
-  const [loadingTemplateKey, setLoadingTemplateKey] = useState('');
-
-  // Submission
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [submittedSectionHash, setSubmittedSectionHash] = useState('');
+  const [liveStatus, setLiveStatus] = useState(buildStatus);
   const [existingSection, setExistingSection] = useState(null);
-  const [loadingSection, setLoadingSection] = useState(true);
-  const [liveStatus, setLiveStatus] = useState(buildStatusProp);
+  const [receipt, setReceipt] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [contextError, setContextError] = useState('');
+  const [error, setError] = useState('');
+  const [yaml, setYaml] = useState({ name: '', content: '' });
+  const [certificate, setCertificate] = useState({ name: '', content: '' });
+  const [yamlError, setYamlError] = useState('');
+  const [certificateError, setCertificateError] = useState('');
+  const [certSource, setCertSource] = useState('custom');
+  const [platformId, setPlatformId] = useState(PLATFORMS[0].id);
+  const [certId, setCertId] = useState(getCertsByPlatform(PLATFORMS[0].id)[0]?.id || '');
+  const [draft, setDraft] = useState(null);
+  const [draftError, setDraftError] = useState('');
+  const [reading, setReading] = useState(false);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const contextRequest = useRef(0);
+  const fileRequest = useRef(0);
+  const templateRequest = useRef(0);
+  const mounted = useRef(false);
+  const submittingRef = useRef(false);
 
-  // Sync live status when prop changes (parent updated)
-  useEffect(() => { setLiveStatus(buildStatusProp); }, [buildStatusProp]);
-
-  // Set default cert when platform changes
   useEffect(() => {
-    const certs = getCertsByPlatform(selectedPlatformId);
-    setSelectedCertId(certs.length > 0 ? certs[0].id : '');
-  }, [selectedPlatformId]);
+    setLiveStatus(buildStatus);
+  }, [buildStatus]);
 
-  useEffect(() => {
-    loadExistingSection();
-    // Fetch live build status in case the prop is stale
-    buildService.getBuild(buildId)
-      .then(b => { if (b?.status) setLiveStatus(b.status); })
-      .catch(() => {});
+  const loadContext = useCallback(async () => {
+    const request = ++contextRequest.current;
+    setLoading(true);
+    setContextError('');
+    try {
+      const [section, build] = await Promise.all([
+        sectionService.getSection(buildId, personaRole),
+        buildService.getBuild(buildId),
+      ]);
+      if (request !== contextRequest.current) return;
+      setExistingSection(section);
+      setLiveStatus(build?.status || '');
+      setLoaded(true);
+      return build?.status;
+    } catch (err) {
+      if (request === contextRequest.current)
+        setContextError(err.message || 'Unable to load submission status.');
+    } finally {
+      if (request === contextRequest.current) setLoading(false);
+    }
   }, [buildId, personaRole]);
 
-  const loadExistingSection = async () => {
-    try {
-      setLoadingSection(true);
-      const section = await sectionService.getSection(buildId, personaRole);
-      setExistingSection(section);
-    } catch (_) { /* no section yet */ } finally {
-      setLoadingSection(false);
-    }
-  };
-
-  const handleWorkloadUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setWorkloadFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const content = typeof ev.target?.result === 'string' ? ev.target.result : '';
-      setWorkloadContent(content);
-      setUploadDraftContent(content);
-      setUploadDraftFileName(file.name);
-      setUploadEditorLabel('Editable file preview');
-      setEncryptedResult(null);
-      setWrappedSymmetricKey(null);
-      setShowUploadEditor(true);
+  useEffect(() => {
+    mounted.current = true;
+    loadContext();
+    return () => {
+      mounted.current = false;
+      ++contextRequest.current;
+      ++fileRequest.current;
+      ++templateRequest.current;
     };
-    reader.readAsText(file);
+  }, [loadContext]);
+
+  const submitted = existingSection || receipt;
+  const correctStage = liveStatus === config.requiredStatus;
+  const locked = !loaded || loading || !!contextError || !correctStage || !!submitted;
+  const busy = submitting || reading || loadingTemplate;
+  const disabled = locked || busy;
+  const activeCertificate =
+    certSource === 'custom' ? certificate.content : getCertById(certId)?.cert || '';
+  const certificateName =
+    certSource === 'custom' ? certificate.name : getCertById(certId)?.label || '';
+  const hasYaml = !!yaml.content.trim();
+  const hasCertificate = hasCertificateContent(activeCertificate);
+  const ready = hasYaml && hasCertificate && !locked;
+  const statusLabel = BUILD_STATUS_CONFIG[liveStatus]?.label || 'Unknown stage';
+  const summary = { yamlName: yaml.name, certificateName, statusLabel };
+
+  const openEditor = (content = yaml.content, name = yaml.name || `${config.fileLabel}.yaml`) => {
+    setDraft({ content, name });
+    setDraftError('');
   };
 
-  const handleCustomCertUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCustomCertFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => setCustomCertContent(ev.target.result);
-    reader.readAsText(file);
-  };
-
-  const downloadTemplate = async (key) => {
-    const tpl = config.templates?.[key];
-    if (!tpl) return;
-
-    if (supportsBackendTemplate) {
-      setError(null);
-      setSuccess(null);
-      setLoadingTemplateKey(key);
-      try {
-        const templateType = tpl.templateType || (personaRole === 'DATA_OWNER' ? 'env' : 'workload');
-        const result = await buildService.getContractTemplate(templateType);
-        const content = typeof result?.content === 'string' ? result.content : '';
-        if (!content.trim()) {
-          setError('Template content is empty.');
-          return;
-        }
-        setUploadDraftContent(content);
-        setUploadDraftFileName(`${config.fileLabel}-template.yaml`);
-        setUploadEditorLabel('Template preview from contract-go');
-        setShowUploadEditor(true);
-      } catch (err) {
-        setError(`Failed to load contract template: ${err.message}`);
-      } finally {
-        setLoadingTemplateKey('');
-      }
-      return;
-    }
-
-    const blob = new Blob([tpl.content], { type: 'text/yaml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${config.fileLabel}-template-${key}.yaml`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const getActiveCertContent = () => {
-    if (certSource === 'custom') return customCertContent;
-    return getCertById(selectedCertId)?.cert || '';
-  };
-
-  const openUploadEditor = () => {
-    if (!workloadContent) return;
-    setUploadDraftContent(workloadContent);
-    setUploadDraftFileName(workloadFileName || `${config.fileLabel}.yaml`);
-    setUploadEditorLabel('Editable file preview');
-    setShowUploadEditor(true);
-  };
-
-  const openAddYamlEditor = () => {
-    setUploadDraftContent(workloadContent || '');
-    setUploadDraftFileName(workloadFileName || `${config.fileLabel}.yaml`);
-    setUploadEditorLabel('Paste content');
-    setShowUploadEditor(true);
-  };
-
-  const closeUploadEditor = () => {
-    setShowUploadEditor(false);
-    setUploadDraftContent(workloadContent);
-  };
-
-  const applyUploadEditorChanges = () => {
-    setWorkloadContent(uploadDraftContent);
-    setWorkloadFileName(uploadDraftFileName || workloadFileName || `${config.fileLabel}.yaml`);
-    setEncryptedResult(null);
-    setWrappedSymmetricKey(null);
-    setShowUploadEditor(false);
-  };
-
-  const handleUploadEditorKeyDown = (event) => {
-    if (event.key !== 'Tab') return;
-    event.preventDefault();
-
-    const { selectionStart, selectionEnd, value } = event.target;
-    const updatedValue = `${value.slice(0, selectionStart)}\t${value.slice(selectionEnd)}`;
-    setUploadDraftContent(updatedValue);
-    setEncryptedResult(null);
-    setWrappedSymmetricKey(null);
-
-    requestAnimationFrame(() => {
-      event.target.selectionStart = selectionStart + 1;
-      event.target.selectionEnd = selectionStart + 1;
-    });
-  };
-
-  const syncUploadEditorScroll = (event) => {
-    if (!uploadEditorLineRef.current) return;
-    uploadEditorLineRef.current.scrollTop = event.target.scrollTop;
-  };
-
-  const handleEncrypt = async () => {
-    if (!workloadContent) { setError(`Please upload a ${config.fileLabel} YAML file.`); return; }
-    const certContent = getActiveCertContent();
-    if (!certContent || certContent.includes('PASTE_')) {
-      setError('Please select or upload a valid encryption certificate.'); return;
-    }
-
-    setEncrypting(true);
-    setEncryptedResult(null);
-    setWrappedSymmetricKey(null);
-    setError(null);
-    setSuccess(null);
-
+  const readFile = async (file, kind) => {
+    if (!file || disabled) return;
+    const setFieldError = kind === 'yaml' ? setYamlError : setCertificateError;
+    const validationError = validateSubmissionFile(file, kind);
+    setFieldError(validationError);
+    if (validationError) return;
+    const request = ++fileRequest.current;
+    setReading(true);
     try {
-      setEncryptedResult('__READY_FOR_V2_SUBMIT__');
-      setSuccess('Submission prepared. Continue to the Submit step.');
-    } catch (err) {
-      setError(`Preparation failed: ${err.message}`);
-    } finally {
-      setEncrypting(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!encryptedResult) { setError('Please prepare the submission first.'); return; }
-    setSubmitting(true);
-    setError(null);
-    setSubmittedSectionHash('');
-    try {
-      const certContent = getActiveCertContent();
-      if (!certContent || certContent.includes('PASTE_')) {
-        throw new Error('Valid certificate PEM is required.');
-      }
-
-      let submitResult = null;
-      if (personaRole === 'SOLUTION_PROVIDER') {
-        submitResult = await buildService.submitWorkloadV2(buildId, {
-          plaintext: workloadContent,
-          certificate_pem: certContent,
-        });
-      } else if (personaRole === 'DATA_OWNER') {
-        submitResult = await buildService.submitEnvironmentV2(buildId, {
-          plaintext: workloadContent,
-          certificate_pem: certContent,
-        });
+      const content = await file.text();
+      if (request !== fileRequest.current) return;
+      if (kind === 'yaml') {
+        const message = validateSubmissionYaml(content);
+        if (message) setYamlError(message);
+        else openEditor(content, file.name);
+      } else if (!hasCertificateContent(content)) {
+        setCertificateError(
+          'Choose a PEM certificate with BEGIN CERTIFICATE and END CERTIFICATE markers.'
+        );
       } else {
-        submitResult = await sectionService.submitEncryptedSection(buildId, personaRole, encryptedResult, wrappedSymmetricKey);
+        setCertificate({ name: file.name, content });
       }
-
-      const responseHash = submitResult?.section_hash || submitResult?.sectionHash || '';
-      if (responseHash) {
-        setSubmittedSectionHash(responseHash);
-      }
-      setEncryptedResult(null);
-      setWrappedSymmetricKey(null);
-      await loadExistingSection();
-      // Fetch updated build status and notify parent + update local state
-      const updatedBuild = await buildService.getBuild(buildId);
-      if (updatedBuild?.status) setLiveStatus(updatedBuild.status);
-      onStatusUpdate?.(updatedBuild.status);
-      setSuccess(responseHash
-        ? `Section submitted successfully. Encrypted payload hash (SHA-256): ${responseHash}`
-        : 'Section submitted successfully.');
-    } catch (err) {
-      setError(`Submission failed: ${err.message}`);
+    } catch {
+      if (request === fileRequest.current)
+        setFieldError('Unable to read this file. Please choose it again.');
     } finally {
-      setSubmitting(false);
-      topRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (request === fileRequest.current) setReading(false);
     }
   };
 
-  if (!config) return null;
+  const useTemplate = async () => {
+    const request = ++templateRequest.current;
+    setLoadingTemplate(true);
+    setYamlError('');
+    try {
+      const result = await buildService.getContractTemplate(config.templateType);
+      if (request !== templateRequest.current) return;
+      const content = typeof result?.content === 'string' ? result.content : '';
+      const message = validateSubmissionYaml(content);
+      if (message) setYamlError(message);
+      else openEditor(content, `${config.fileLabel}-template.yaml`);
+    } catch (err) {
+      if (request === templateRequest.current)
+        setYamlError(`Unable to load the template: ${err.message}`);
+    } finally {
+      if (request === templateRequest.current) setLoadingTemplate(false);
+    }
+  };
 
-  // AUDITOR has its own dedicated component
-  if (personaRole === 'AUDITOR') {
-    return (
-      <AuditorSection
-        buildId={buildId}
-        buildStatus={liveStatus}
-        onStatusUpdate={onStatusUpdate}
-      />
-    );
-  }
+  const applyDraft = () => {
+    if (disabled || !draft) return;
+    const message = validateSubmissionYaml(draft.content);
+    setDraftError(message);
+    if (message) return;
+    setYaml(draft);
+    setYamlError('');
+    setDraft(null);
+  };
 
-  const isCorrectStatus = liveStatus === config.requiredBuildStatus;
-  const certOptions = getCertsByPlatform(selectedPlatformId);
-  const isDisabled = !isCorrectStatus || !!existingSection;
-  const bodyClassName = `workflow-body${isDisabled ? ' workflow-body--disabled' : ''}`;
-  const sectionHashToDisplay = existingSection?.section_hash || submittedSectionHash;
-  const submittedEncryptedPayload = existingSection?.encrypted_payload || '';
+  const submit = async () => {
+    if (!ready || busy || submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError('');
+    try {
+      const payload = { plaintext: yaml.content, certificate_pem: activeCertificate };
+      const result =
+        personaRole === 'SOLUTION_PROVIDER'
+          ? await buildService.submitWorkloadV2(buildId, payload)
+          : await buildService.submitEnvironmentV2(buildId, payload);
+      if (!mounted.current) return;
+      // Keep a successful POST locked even if the following status refresh fails.
+      setReceipt({
+        section_hash: result?.section_hash || result?.sectionHash || '',
+        submitted_at: result?.submitted_at,
+      });
+      setReviewOpen(false);
+      const status = await loadContext();
+      if (mounted.current && status) onStatusUpdate?.(status);
+    } catch (err) {
+      if (mounted.current) setError(err.message || 'Unable to submit. Please try again.');
+    } finally {
+      submittingRef.current = false;
+      if (mounted.current) setSubmitting(false);
+    }
+  };
 
   return (
-    <div ref={topRef}>
-      <h2 className="workflow-title">{config.title}</h2>
-      <p className="workflow-description">
-        {config.description}
-      </p>
-
-      {error && (
-        <InlineNotification kind="error" title="Error" subtitle={error}
-          onCloseButtonClick={() => setError(null)} lowContrast className="workflow-notification" />
-      )}
-      {success && (
-        <InlineNotification kind="success" title="Success" subtitle={success}
-          onCloseButtonClick={() => setSuccess(null)} lowContrast className="workflow-notification" />
-      )}
-
-      {!loadingSection && existingSection && (
-        <Tile className="workflow-complete-tile">
-          <div className="workflow-complete-tile__row">
-            <CheckmarkFilled size={20} className="workflow-complete-tile__icon" />
-            <div>
-              <strong>Section already submitted</strong>
-              <div className="workflow-complete-tile__meta">
-                Submitted at: {existingSection.submitted_at
-                  ? formatDate(existingSection.submitted_at, { second: '2-digit', timeZoneName: 'short' }) : 'N/A'}
-              </div>
-              {sectionHashToDisplay && (
-                <div className="workflow-complete-tile__meta">
-                  Encrypted Payload Hash (SHA-256): <code className="workflow-hash-inline">{sectionHashToDisplay}</code>
-                </div>
-              )}
-              {sectionHashToDisplay && (
-                <div className="workflow-complete-tile__meta">
-                  This hash is computed from the encrypted payload (not plaintext {config.fileLabel} YAML).
-                </div>
-              )}
-              {!!submittedEncryptedPayload && (
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  renderIcon={View}
-                  onClick={() => setShowSubmittedPreview(true)}
-                  className="workflow-complete-tile__preview-button"
-                >
-                  Preview Encrypted {config.fileLabel.charAt(0).toUpperCase() + config.fileLabel.slice(1)}
-                </Button>
-              )}
-            </div>
-            <Tag type="green" className="workflow-complete-tile__tag">Submitted</Tag>
-          </div>
-        </Tile>
-      )}
-
-      {!isCorrectStatus && !existingSection && (
-        <InlineNotification kind="info" title="Not yet available"
-          subtitle={`This section requires build status "${config.requiredBuildStatus}". Current: ${liveStatus}.`}
-          lowContrast hideCloseButton className="workflow-notification" />
-      )}
-
-      <div className={bodyClassName}>
-
-        {/* ── Step 1: Upload YAML ───────────────────────────────────────── */}
+    <section className="submission-form" aria-labelledby={`submission-title-${personaRole}`}>
+      <header className="submission-form__header">
         <div>
-          <h4 className="workflow-step-heading">
-            <Document size={18} /> Step 1 — Upload {config.fileLabel.charAt(0).toUpperCase() + config.fileLabel.slice(1)} YAML
-          </h4>
-
-          {/* Template buttons — shown when templates are configured */}
-          {config.templates && (
-            <div className="workflow-template-row">
-              <span className="workflow-template-row__label">
-                Download template:
-              </span>
-              {Object.entries(config.templates).map(([key, tpl]) => (
-                <Button
-                  key={key}
-                  kind="ghost"
-                  size="sm"
-                  renderIcon={Download}
-                  onClick={() => downloadTemplate(key)}
-                  disabled={loadingTemplateKey === key}
-                >
-                  {loadingTemplateKey === key ? 'Loading...' : tpl.label}
-                </Button>
-              ))}
-            </div>
-          )}
-
-          <div className="workflow-file-row">
-            <div className="workflow-file-row__uploader">
-              <FileUploader
-                labelDescription={`Upload ${config.fileLabel} YAML file (.yaml / .yml)`}
-                buttonLabel="Choose file"
-                filenameStatus="edit"
-                accept={['.yaml', '.yml']}
-                onChange={handleWorkloadUpload}
-              />
-            </div>
-            {config.addYamlButtonLabel && (
-              <Button
-                kind="ghost"
-                size="sm"
-                onClick={openAddYamlEditor}
-                className="workflow-file-row__add-button"
-              >
-                {config.addYamlButtonLabel}
-              </Button>
-            )}
-          </div>
-          {workloadContent && (
-            <div>
-              <p className="workflow-upload-meta">
-                {workloadFileName} — {workloadContent.length} bytes loaded
-              </p>
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={View}
-                onClick={openUploadEditor}
-                className="workflow-upload-preview-button"
-              >
-                Preview / Edit {config.fileLabel} YAML
-              </Button>
-            </div>
-          )}
+          <h2 id={`submission-title-${personaRole}`}>Add {config.fileLabel}</h2>
+          <p>Add your YAML and choose the certificate used to encrypt it.</p>
         </div>
-
-        {/* ── Step 2: Certificate (only when encryption is needed) ─────── */}
-        {config.needsCert && (
-          <div>
-            <h4 className="workflow-step-title">Step 2 — HPCR Encryption Certificate</h4>
-
-            <RadioButtonGroup
-              name={`cert-source-${personaRole}`}
-              valueSelected={certSource}
-              onChange={(val) => { setCertSource(val); setEncryptedResult(null); }}
-              className="workflow-radio-group"
-            >
-              <RadioButton labelText="Upload custom certificate" value="custom" id={`cert-custom-${personaRole}`} />
-              <RadioButton labelText="Use built-in certificate" value="builtin" id={`cert-builtin-${personaRole}`} />
-            </RadioButtonGroup>
-
-            {certSource === 'builtin' ? (
-              <div className="workflow-form-row">
-                <Select
-                  id={`cert-platform-${personaRole}`}
-                  labelText="Platform"
-                  value={selectedPlatformId}
-                  onChange={(e) => { setSelectedPlatformId(e.target.value); setEncryptedResult(null); }}
-                  className="workflow-select workflow-select--platform"
-                >
-                  {PLATFORMS.map(p => (
-                    <SelectItem key={p.id} value={p.id} text={p.label} />
-                  ))}
-                </Select>
-
-                <Select
-                  id={`cert-version-${personaRole}`}
-                  labelText="Version"
-                  value={selectedCertId}
-                  onChange={(e) => { setSelectedCertId(e.target.value); setEncryptedResult(null); }}
-                  className="workflow-select workflow-select--version"
-                >
-                  {certOptions.map(c => (
-                    <SelectItem key={c.id} value={c.id} text={c.version} />
-                  ))}
-                </Select>
-              </div>
-            ) : (
-              <div>
-                <FileUploader
-                  labelDescription="Upload certificate (.crt / .pem)"
-                  buttonLabel="Choose file"
-                  filenameStatus="edit"
-                  accept={['.crt', '.pem', '.cer']}
-                  onChange={handleCustomCertUpload}
-                />
-                {customCertFileName && (
-                  <p className="workflow-upload-meta">
-                    {customCertFileName} loaded
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Step 2/3: Prepare ─────────────────────────────────────────── */}
-        <div>
-          <h4 className="workflow-step-heading">
-            <CheckmarkFilled size={18} /> Step {config.needsCert ? 3 : 2} — Prepare Submission
-          </h4>
-
+        <Tag type={submitted ? 'green' : ready ? 'blue' : 'gray'}>
+          {submitted
+            ? 'Submitted'
+            : loading
+              ? 'Checking status'
+              : ready
+                ? 'Ready to submit'
+                : correctStage
+                  ? 'Inputs needed'
+                  : 'Waiting for previous stage'}
+        </Tag>
+      </header>
+      {loading && <InlineLoading description="Loading submission status…" />}
+      {contextError && (
+        <div className="submission-form__notice">
+          <InlineNotification
+            kind={submitted ? 'warning' : 'error'}
+            title={
+              submitted ? 'Submitted — status refresh failed' : 'Unable to load submission status'
+            }
+            subtitle={contextError}
+            lowContrast
+            hideCloseButton
+          />
           <Button
-            kind="secondary"
-            onClick={handleEncrypt}
-            disabled={encrypting || !workloadContent}
-            className="workflow-step-action"
+            kind="tertiary"
+            size="sm"
+            renderIcon={Renew}
+            onClick={loadContext}
+            disabled={loading}
           >
-            {encrypting ? 'Preparing...' : 'Prepare Submission'}
+            Retry loading
           </Button>
-
-          <p className="workflow-help-text">
-            Preparation validates your inputs and readies a backend-native submission payload.
-          </p>
-
-          {encryptedResult && (
-            <div className="workflow-result-banner">
-              <div>
-                <div className="workflow-result-banner__title">
-                  Submission prepared
-                </div>
-                <div className="workflow-result-banner__preview">
-                  Plaintext + certificate are ready for backend-native encryption.
-                </div>
-              </div>
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={View}
-                onClick={() => setShowPreview(true)}
-                className="workflow-result-banner__preview-button"
-              >
-                Preview
-              </Button>
-            </div>
-          )}
         </div>
-
-        {/* ── Step 3/4: Submit ──────────────────────────────────────────── */}
-        <div>
-          <h4 className="workflow-step-title">Step {config.needsCert ? 4 : 3} — Submit</h4>
-          <Button
-            renderIcon={Upload}
-            onClick={handleSubmit}
-            disabled={submitting || !encryptedResult}
-          >
-            {submitting ? 'Submitting...' : `Submit ${config.title}`}
-          </Button>
-          {!encryptedResult && (
-            <p className="workflow-help-text">
-              Complete Step {config.needsCert ? 3 : 2} before submitting.
+      )}
+      {submitted ? (
+        <Tile className="submission-form__complete">
+          <CheckmarkFilled size={24} className="submission-form__complete-icon" />
+          <h3>{config.label} submitted</h3>
+          <p>Your {config.fileLabel} has been encrypted and saved to this build.</p>
+          {submitted.submitted_at && (
+            <p className="submission-form__meta">
+              Submitted{' '}
+              {formatDate(submitted.submitted_at, { second: '2-digit', timeZoneName: 'short' })}
             </p>
           )}
-        </div>
-
-      </div>
-
+          {(submitted.section_hash || receipt?.section_hash) && (
+            <>
+              <p className="submission-form__meta">Encrypted payload hash (SHA-256)</p>
+              <CodeSnippet type="multi" wrapText>
+                {submitted.section_hash || receipt.section_hash}
+              </CodeSnippet>
+            </>
+          )}
+          {submitted.encrypted_payload && (
+            <Button kind="ghost" size="sm" renderIcon={View} onClick={() => setPreviewOpen(true)}>
+              View encrypted payload
+            </Button>
+          )}
+        </Tile>
+      ) : loaded && liveStatus === BUILD_STATUS.CANCELLED ? (
+        <Tile className="submission-form__complete">
+          <h3>Build cancelled</h3>
+          <p>This build is closed and cannot accept a {config.fileLabel} submission.</p>
+        </Tile>
+      ) : loaded ? (
+        <>
+          {!correctStage && (
+            <InlineNotification
+              kind="info"
+              title="Waiting for the previous stage"
+              subtitle={config.prerequisite}
+              lowContrast
+              hideCloseButton
+            />
+          )}
+          <Layer
+            as="fieldset"
+            className="submission-form__layout"
+            disabled={disabled}
+            aria-label={`${config.label} submission`}
+          >
+            <div className="submission-form__inputs">
+              <Tile className="submission-form__step">
+                <p className="submission-form__eyebrow">Step 1</p>
+                <h3>{config.label} YAML</h3>
+                <p className="submission-form__help">
+                  Upload a .yaml or .yml file, start with a template, or paste your YAML. Maximum
+                  file size: 50 MB.
+                </p>
+                <FileUploaderDropContainer
+                  id={`yaml-file-${personaRole}`}
+                  accept={['.yaml', '.yml']}
+                  labelText="Drag and drop YAML here or click to upload"
+                  disabled={disabled}
+                  maxFileSize={FILE_SIZE_LIMITS.WORKLOAD}
+                  onAddFiles={(_, { addedFiles }) => readFile(addedFiles[0], 'yaml')}
+                />
+                <div className="submission-form__actions">
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    renderIcon={DocumentAdd}
+                    disabled={disabled}
+                    onClick={useTemplate}
+                  >
+                    {loadingTemplate ? 'Loading template…' : 'Use template'}
+                  </Button>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    renderIcon={Edit}
+                    disabled={disabled}
+                    onClick={() => openEditor()}
+                  >
+                    {hasYaml ? 'Edit YAML' : 'Paste YAML'}
+                  </Button>
+                </div>
+                {yaml.name && (
+                  <FileUploaderItem
+                    name={yaml.name}
+                    status="edit"
+                    iconDescription="Remove YAML file"
+                    disabled={disabled}
+                    onDelete={() => {
+                      setYaml({ name: '', content: '' });
+                      setYamlError('');
+                    }}
+                  />
+                )}
+                {yamlError && (
+                  <InlineNotification
+                    kind="error"
+                    title="YAML could not be added"
+                    subtitle={yamlError}
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+              </Tile>
+              <Tile className="submission-form__step">
+                <p className="submission-form__eyebrow">Step 2</p>
+                <h3>Encryption certificate</h3>
+                <p className="submission-form__help">
+                  Choose the HPCR certificate for the environment where this contract will run.
+                </p>
+                <RadioButtonGroup
+                  name={`cert-source-${personaRole}`}
+                  legendText="Certificate source"
+                  orientation="vertical"
+                  valueSelected={certSource}
+                  disabled={disabled}
+                  onChange={(value) => {
+                    setCertSource(value);
+                    setCertificateError('');
+                  }}
+                >
+                  <RadioButton
+                    id={`cert-custom-${personaRole}`}
+                    value="custom"
+                    labelText="Upload custom certificate"
+                  />
+                  <RadioButton
+                    id={`cert-builtin-${personaRole}`}
+                    value="builtin"
+                    labelText="Use built-in certificate"
+                  />
+                </RadioButtonGroup>
+                {certSource === 'custom' ? (
+                  <div className="submission-form__certificate">
+                    <p className="submission-form__help">
+                      PEM-encoded .pem, .crt, or .cer file. Maximum file size: 10 KB.
+                    </p>
+                    <FileUploaderDropContainer
+                      id={`certificate-file-${personaRole}`}
+                      accept={['.pem', '.crt', '.cer']}
+                      labelText="Drag and drop a certificate here or click to upload"
+                      disabled={disabled}
+                      maxFileSize={FILE_SIZE_LIMITS.CERTIFICATE}
+                      onAddFiles={(_, { addedFiles }) => readFile(addedFiles[0], 'certificate')}
+                    />
+                    {certificate.name && (
+                      <FileUploaderItem
+                        name={certificate.name}
+                        status="edit"
+                        iconDescription="Remove certificate file"
+                        disabled={disabled}
+                        onDelete={() => {
+                          setCertificate({ name: '', content: '' });
+                          setCertificateError('');
+                        }}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="submission-form__certificate submission-form__selects">
+                    <Select
+                      id={`platform-${personaRole}`}
+                      labelText="Platform"
+                      value={platformId}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        setPlatformId(event.target.value);
+                        setCertId(getCertsByPlatform(event.target.value)[0]?.id || '');
+                      }}
+                    >
+                      {PLATFORMS.filter((platform) => getCertsByPlatform(platform.id).length).map(
+                        (platform) => (
+                          <SelectItem key={platform.id} value={platform.id} text={platform.label} />
+                        )
+                      )}
+                    </Select>
+                    <Select
+                      id={`certificate-${personaRole}`}
+                      labelText="Certificate"
+                      value={certId}
+                      disabled={disabled}
+                      onChange={(event) => setCertId(event.target.value)}
+                    >
+                      {getCertsByPlatform(platformId).map((cert) => (
+                        <SelectItem
+                          key={cert.id}
+                          value={cert.id}
+                          text={cert.version || cert.label}
+                        />
+                      ))}
+                    </Select>
+                  </div>
+                )}
+                {certificateError && (
+                  <InlineNotification
+                    kind="error"
+                    title="Certificate could not be added"
+                    subtitle={certificateError}
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+                {reading && <InlineLoading description="Reading file…" />}
+              </Tile>
+            </div>
+            <Tile className="submission-form__step submission-form__review">
+              <p className="submission-form__eyebrow">Step 3</p>
+              <h3>Review and submit</h3>
+              <p className="submission-form__help">
+                The server encrypts your YAML with the selected certificate and stores the encrypted
+                payload.
+              </p>
+              <SubmissionSummary {...summary} />
+              <p className="submission-form__readiness" aria-live="polite">
+                {!correctStage
+                  ? 'Complete the previous build stage to continue.'
+                  : !hasYaml
+                    ? 'Add your YAML to continue.'
+                    : !hasCertificate
+                      ? 'Choose an encryption certificate to continue.'
+                      : 'Your inputs are ready to review.'}
+              </p>
+              <Button
+                renderIcon={ArrowRight}
+                disabled={!ready || busy}
+                onClick={() => {
+                  setError('');
+                  setReviewOpen(true);
+                }}
+              >
+                Review submission
+              </Button>
+            </Tile>
+          </Layer>
+        </>
+      ) : null}
       <Modal
-        open={showUploadEditor}
-        modalHeading={`${config.fileLabel.charAt(0).toUpperCase() + config.fileLabel.slice(1)} YAML Editor`}
-        modalLabel={uploadEditorLabel}
-        primaryButtonText="Apply Changes"
+        open={!!draft}
+        modalHeading={`Edit ${config.fileLabel} YAML`}
+        modalLabel={draft?.name}
+        className="submission-modal"
+        size="lg"
+        primaryButtonText="Apply YAML"
         secondaryButtonText="Cancel"
-        onRequestSubmit={applyUploadEditorChanges}
-        onSecondarySubmit={closeUploadEditor}
-        onRequestClose={closeUploadEditor}
-        size="lg"
+        primaryButtonDisabled={disabled || !draft?.content.trim()}
+        onRequestSubmit={applyDraft}
+        onRequestClose={() => setDraft(null)}
+        onSecondarySubmit={() => setDraft(null)}
+        selectorPrimaryFocus={`#yaml-editor-${personaRole}`}
       >
-        <p className="workflow-modal-copy workflow-modal-copy--tight">
-          Review and edit the uploaded YAML before submission. Use <code>Tab</code> to indent.
+        <TextArea
+          id={`yaml-editor-${personaRole}`}
+          labelText={`${config.label} YAML content`}
+          rows={16}
+          value={draft?.content || ''}
+          onChange={(event) => {
+            setDraft((current) => ({ ...current, content: event.target.value }));
+            setDraftError('');
+          }}
+          invalid={!!draftError}
+          invalidText={draftError}
+          spellCheck={false}
+        />
+      </Modal>
+      <Modal
+        open={reviewOpen}
+        modalHeading={`Submit ${config.fileLabel}`}
+        modalLabel="Review submission"
+        className="submission-modal"
+        size="lg"
+        loadingStatus={submitting ? 'active' : 'inactive'}
+        loadingDescription="Submitting…"
+        primaryButtonText={submitting ? 'Submitting…' : `Submit ${config.fileLabel}`}
+        secondaryButtonText="Back to editing"
+        primaryButtonDisabled={!ready || busy}
+        onRequestSubmit={submit}
+        onRequestClose={() => {
+          if (!submitting) setReviewOpen(false);
+        }}
+        onSecondarySubmit={() => {
+          if (!submitting) setReviewOpen(false);
+        }}
+        preventCloseOnClickOutside
+      >
+        <p className="submission-form__help">
+          Check your YAML and certificate before submitting. Once submitted, this section cannot be
+          edited.
         </p>
-        {uploadDraftFileName && (
-          <p className="workflow-upload-meta">Editing: {uploadDraftFileName}</p>
-        )}
-        <div className="workflow-code-editor">
-          <pre ref={uploadEditorLineRef} className="workflow-code-editor__line-numbers" aria-hidden="true">
-            {Array.from(
-              { length: Math.max(uploadDraftContent.split('\n').length, 1) },
-              (_, index) => index + 1
-            ).join('\n')}
-          </pre>
-          <textarea
-            value={uploadDraftContent}
-            onChange={(event) => {
-              setUploadDraftContent(event.target.value);
-              setEncryptedResult(null);
-              setWrappedSymmetricKey(null);
-            }}
-            onKeyDown={handleUploadEditorKeyDown}
-            onScroll={syncUploadEditorScroll}
-            className="workflow-code-editor__textarea"
-            spellCheck={false}
-            wrap="soft"
-            aria-label={`${config.fileLabel} yaml editor`}
+        {error && (
+          <InlineNotification
+            kind="error"
+            title="Submission failed"
+            subtitle={error}
+            lowContrast
+            hideCloseButton
           />
-        </div>
-      </Modal>
-
-      {/* ── Preview modal ─────────────────────────────────────────────────── */}
-      <Modal
-        open={showPreview}
-        modalHeading={`${config.title} Preview`}
-        modalLabel="Review before submit"
-        primaryButtonText="Close"
-        onRequestSubmit={() => setShowPreview(false)}
-        onRequestClose={() => setShowPreview(false)}
-        size="lg"
-        passiveModal
-      >
-        <p className="workflow-modal-copy">
-          Backend-native flow: this plaintext YAML is submitted with the selected certificate, and encryption is performed on the backend.
-        </p>
-        <CodeSnippet type="multi" feedback="Copied to clipboard" wrapText>
-          {workloadContent || ''}
+        )}
+        <SubmissionSummary {...summary} />
+        <h3 className="submission-form__preview-title">{config.label} YAML</h3>
+        <CodeSnippet type="multi" wrapText>
+          {yaml.content}
         </CodeSnippet>
       </Modal>
-
       <Modal
-        open={showSubmittedPreview}
-        modalHeading={`Encrypted ${config.fileLabel.charAt(0).toUpperCase() + config.fileLabel.slice(1)} Preview`}
+        open={previewOpen}
+        passiveModal
+        modalHeading={`Encrypted ${config.fileLabel}`}
         modalLabel="Submitted payload"
-        primaryButtonText="Close"
-        onRequestSubmit={() => setShowSubmittedPreview(false)}
-        onRequestClose={() => setShowSubmittedPreview(false)}
+        className="submission-modal"
         size="lg"
-        passiveModal
+        onRequestClose={() => setPreviewOpen(false)}
       >
-        <p className="workflow-modal-copy">
-          This is the encrypted payload stored after submission.
-        </p>
-        <CodeSnippet type="multi" feedback="Copied to clipboard" wrapText>
-          {submittedEncryptedPayload}
+        <CodeSnippet type="multi" wrapText>
+          {submitted?.encrypted_payload || ''}
         </CodeSnippet>
       </Modal>
-    </div>
+    </section>
   );
-};
+}
 
-export default SectionSubmit;
+export default function SectionSubmit(props) {
+  if (props.personaRole === 'AUDITOR') return <AuditorSection {...props} />;
+  if (!ROLE_CONFIG[props.personaRole]) return null;
+  // A draft belongs to one role on one build and must never leak to another.
+  return <SubmissionForm key={`${props.buildId}:${props.personaRole}`} {...props} />;
+}
