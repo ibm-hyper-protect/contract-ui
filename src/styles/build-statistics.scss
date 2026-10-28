@@ -1,0 +1,113 @@
+@use '@carbon/styles/scss/breakpoint' as breakpoint;
+@use '@carbon/styles/scss/spacing' as spacing;
+@use '@carbon/styles/scss/type' as type;
+
+.build-statistics {
+  margin-block: spacing.$spacing-06 spacing.$spacing-07;
+  min-inline-size: 0;
+}
+
+.build-statistics__heading {
+  margin-block-end: spacing.$spacing-05;
+}
+
+.build-statistics__title {
+  @include type.type-style('heading-03');
+  margin: 0;
+}
+
+.build-statistics__description {
+  @include type.type-style('body-compact-01');
+  margin: spacing.$spacing-03 0 0;
+  color: var(--cds-text-secondary);
+}
+
+.build-statistics__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: spacing.$spacing-05;
+  margin: 0 0 spacing.$spacing-05;
+}
+
+.build-statistics__metric {
+  min-inline-size: 0;
+  padding: spacing.$spacing-05;
+}
+
+.build-statistics__metric-label {
+  @include type.type-style('label-02');
+  color: var(--cds-text-secondary);
+}
+
+.build-statistics__metric-value {
+  @include type.type-style('heading-05');
+  margin: spacing.$spacing-04 0 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+
+  .cds--skeleton__text {
+    margin: 0;
+  }
+}
+
+.build-statistics__metric-detail {
+  @include type.type-style('body-compact-01');
+  margin: spacing.$spacing-03 0 0;
+  color: var(--cds-text-secondary);
+}
+
+.build-statistics__breakdown {
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.build-statistics__breakdown-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-05;
+  padding: spacing.$spacing-05;
+}
+
+.build-statistics__subtitle {
+  @include type.type-style('heading-02');
+  margin: 0;
+}
+
+.build-statistics__table {
+  min-inline-size: 0;
+
+  .cds--data-table-content {
+    overflow-x: auto;
+  }
+
+  .cds--data-table {
+    min-inline-size: 28rem;
+  }
+
+  .build-statistics__number {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+    inline-size: 6rem;
+
+    .cds--table-header-label {
+      text-align: inherit;
+    }
+  }
+
+  .cds--tag {
+    margin-inline-start: 0;
+  }
+}
+
+.build-statistics__empty,
+.build-statistics__placeholder {
+  padding: spacing.$spacing-05;
+}
+
+@include breakpoint.breakpoint-down(lg) {
+  .build-statistics__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
