@@ -1,6 +1,7 @@
 import apiClient from './apiClient';
 import cryptoService from './cryptoService';
 import { useAuthStore } from '../store/authStore';
+import { decodeContractContent } from '../utils/contractContent';
 
 /**
  * Export Service - Contract export and download management
@@ -14,27 +15,7 @@ class ExportService {
    * @returns {string}
    */
   decodeContractYaml(contractYaml) {
-    if (typeof contractYaml !== 'string') return '';
-
-    const value = contractYaml.trim();
-    if (!value) return '';
-
-    // Raw YAML fast-path
-    if (value.includes('\n') || value.includes('workload:') || value.includes('env:')) {
-      return contractYaml;
-    }
-
-    // Likely base64 payload
-    const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
-    if (!base64Regex.test(value) || (value.length % 4 !== 0)) {
-      return contractYaml;
-    }
-
-    try {
-      return atob(value);
-    } catch (_) {
-      return contractYaml;
-    }
+    return decodeContractContent(contractYaml);
   }
 
   /**
@@ -98,7 +79,9 @@ class ExportService {
     try {
       const resultPath = await window.electron.file.saveFile(defaultFilename, contractYaml);
       if (!resultPath) {
-        throw new Error('Save cancelled');
+        const cancelled = new Error('Save cancelled');
+        cancelled.code = 'SAVE_CANCELLED';
+        throw cancelled;
       }
 
       return {
@@ -107,6 +90,7 @@ class ExportService {
         filename: defaultFilename
       };
     } catch (error) {
+      if (error.code === 'SAVE_CANCELLED') throw error;
       console.error('Failed to save contract:', error);
       throw new Error(`Failed to save contract: ${error.message}`);
     }

@@ -1,0 +1,146 @@
+@use '@carbon/styles/scss/spacing' as spacing;
+@use '@carbon/styles/scss/type' as type;
+
+// Limit the embedding fix to these tabs; the parent uses lg-only Carbon columns.
+.build-details-tab-content .cds--css-grid-column:has(> .contract-completion) {
+  grid-column: 1 / -1;
+}
+
+.contract-completion {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-06;
+  min-inline-size: 0;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: spacing.$spacing-05;
+
+    h2 {
+      @include type.type-style('heading-03');
+    }
+    p {
+      @include type.type-style('body-01');
+      color: var(--cds-text-secondary);
+      margin-block-start: spacing.$spacing-03;
+      max-inline-size: 64ch;
+    }
+    .cds--tag {
+      flex-shrink: 0;
+      margin: 0;
+    }
+  }
+
+  &__card {
+    padding: spacing.$spacing-06;
+    min-inline-size: 0;
+    h3 {
+      @include type.type-style('heading-02');
+    }
+    p {
+      @include type.type-style('body-01');
+      color: var(--cds-text-secondary);
+      margin-block-start: spacing.$spacing-03;
+      max-inline-size: 80ch;
+    }
+    form {
+      margin-block-start: spacing.$spacing-06;
+    }
+    .cds--text-input-wrapper {
+      max-inline-size: 36rem;
+    }
+  }
+
+  &__card-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: spacing.$spacing-04;
+    .cds--tag {
+      margin: 0;
+    }
+  }
+  &__fieldset {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    min-inline-size: 0;
+  }
+  &__notice {
+    max-inline-size: none;
+    margin: 0;
+  }
+  &__card > &__notice {
+    margin-block-start: spacing.$spacing-05;
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+    margin-block-start: spacing.$spacing-06;
+  }
+  &__metadata {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: spacing.$spacing-05;
+    margin-block-start: spacing.$spacing-06;
+    padding-block-start: spacing.$spacing-05;
+    border-block-start: 1px solid var(--cds-border-subtle);
+    dt {
+      @include type.type-style('label-01');
+      color: var(--cds-text-secondary);
+    }
+    dd {
+      @include type.type-style('body-01');
+      margin: spacing.$spacing-02 0 0;
+    }
+    .cds--snippet {
+      max-inline-size: 100%;
+    }
+    .cds--snippet-container {
+      overflow-wrap: anywhere;
+    }
+  }
+  &__hash {
+    grid-column: 1 / -1;
+    min-inline-size: 0;
+  }
+  &__path {
+    overflow-wrap: anywhere;
+  }
+}
+
+.contract-completion-preview {
+  &__copy {
+    margin-block-end: spacing.$spacing-05;
+  }
+  &__id {
+    @include type.type-style('label-01');
+    color: var(--cds-text-secondary);
+    overflow-wrap: anywhere;
+    margin-block-end: spacing.$spacing-05;
+  }
+  .cds--snippet {
+    max-inline-size: 100%;
+  }
+}
+
+@media (max-width: 671px) {
+  .contract-completion {
+    &__header {
+      flex-direction: column;
+    }
+    &__metadata {
+      grid-template-columns: 1fr;
+    }
+    &__card {
+      padding: spacing.$spacing-05;
+    }
+    &__actions .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+    }
+  }
+}
