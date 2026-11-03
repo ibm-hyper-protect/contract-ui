@@ -554,7 +554,7 @@ registerIpcHandler('contractCli:encryptSectionStream', async (event, plainText, 
   const ts = Date.now();
   let certPath = null;
   try {
-    certPath = path.join(os.tmpdir(), `hpcr-cert-${ts}.pem`);
+    certPath = path.join(os.tmpdir(), `contract-cert-${ts}.pem`);
     await fs.writeFile(certPath, certContent, 'utf8');
 
     const cliPath = process.env.CONTRACT_CLI_PATH || 'contract-cli';
@@ -742,12 +742,12 @@ registerIpcHandler('auditor:generateAttestationKey', async (event, { folderPath,
   return { publicKey, publicKeyPath: pubPath, privateKeyPath: privPath };
 });
 
-// Generate encrypted environment artifact only (decrypt env, inject signing key/cert, re-encrypt with HPCR cert)
+// Generate encrypted environment artifact only (decrypt env, inject signing key/cert, re-encrypt with runtime encryption certificate)
 registerIpcHandler('auditor:generateEncryptedEnv', async (event, {
   encryptedEnvPayload,   // JSON string: {iv, authTag, encrypted}
   wrappedSymmetricKey,   // base64 wrapped AES key
   signingCertContent,    // PEM signing cert/public key to inject into env
-  certContent,           // HPCR encryption certificate content
+  certContent,           // runtime encryption certificate content
   auditorPrivateKeyPem,  // Auditor identity private key (unencrypted PEM) for unwrapping
 }) => {
   const { spawn } = require('child_process');
@@ -761,7 +761,7 @@ registerIpcHandler('auditor:generateEncryptedEnv', async (event, {
   };
 
   const ts = Date.now();
-  const certPath = path.join(os.tmpdir(), `hpcr-cert-${ts}.pem`);
+  const certPath = path.join(os.tmpdir(), `contract-cert-${ts}.pem`);
   try {
     // 1) Unwrap AES key
     send('cmd', '$ node:crypto  privateDecrypt({ key, oaepHash: "sha256" }, wrappedKey)  [unwrap AES key]');
@@ -806,7 +806,7 @@ registerIpcHandler('auditor:generateEncryptedEnv', async (event, {
       child.stdin.end();
     });
 
-    send('success', 'Environment section encrypted with HPCR certificate.');
+    send('success', 'Environment section encrypted with runtime encryption certificate.');
     send('result', 'Encrypted env artifact ready.');
     return { encryptedEnv };
   } finally {
@@ -814,7 +814,7 @@ registerIpcHandler('auditor:generateEncryptedEnv', async (event, {
   }
 });
 
-// Encrypt attestation public key only using HPCR certificate
+// Encrypt attestation public key only using runtime encryption certificate
 registerIpcHandler('auditor:encryptAttestationPublicKey', async (event, {
   attestationPublicKey,
   certContent,
@@ -829,7 +829,7 @@ registerIpcHandler('auditor:encryptAttestationPublicKey', async (event, {
   };
 
   const ts = Date.now();
-  const certPath = path.join(os.tmpdir(), `hpcr-cert-${ts}.pem`);
+  const certPath = path.join(os.tmpdir(), `contract-cert-${ts}.pem`);
   try {
     await fs.writeFile(certPath, certContent, 'utf8');
     const cliPath = process.env.CONTRACT_CLI_PATH || 'contract-cli';
@@ -847,7 +847,7 @@ registerIpcHandler('auditor:encryptAttestationPublicKey', async (event, {
       child.stdin.end();
     });
 
-    send('success', 'Attestation public key encrypted with HPCR certificate.');
+    send('success', 'Attestation public key encrypted with runtime encryption certificate.');
     send('result', 'Encrypted attestation public key ready.');
     return { encryptedAttestationPubKey };
   } finally {
@@ -862,7 +862,7 @@ registerIpcHandler('auditor:encryptEnvAndAttestation', async (event, {
   wrappedSymmetricKey,   // base64 wrapped AES key
   signingCertContent,    // PEM signing cert to inject into env
   attestationPublicKey,  // PEM attestation public key to encrypt
-  certContent,           // HPCR encryption certificate content
+  certContent,           // runtime encryption certificate content
   auditorPrivateKeyPem   // Auditor's identity private key (unencrypted PEM) for unwrapping
 }) => {
   const { spawn } = require('child_process');
@@ -877,7 +877,7 @@ registerIpcHandler('auditor:encryptEnvAndAttestation', async (event, {
 
   const ts = Date.now();
   const tmpFiles = [];
-  const tmp = (name) => { const p = path.join(os.tmpdir(), `hpcr-${name}-${ts}`); tmpFiles.push(p); return p; };
+  const tmp = (name) => { const p = path.join(os.tmpdir(), `contract-${name}-${ts}`); tmpFiles.push(p); return p; };
 
   try {
     // 1. Unwrap AES symmetric key using Auditor's identity private key (RSA-OAEP)
@@ -907,7 +907,7 @@ registerIpcHandler('auditor:encryptEnvAndAttestation', async (event, {
     send('stdout', 'Injected signingKey into env section.');
 
     // 4. Encrypt env + attestation pubkey via contract-cli using stdin (--in -)
-    const certPath = tmp('hpcr.pem');
+    const certPath = tmp('runtime.pem');
     await fs.writeFile(certPath, certContent, 'utf8');
 
     const cliPath = process.env.CONTRACT_CLI_PATH || 'contract-cli';
@@ -926,10 +926,10 @@ registerIpcHandler('auditor:encryptEnvAndAttestation', async (event, {
     });
 
     const encryptedEnv = await runCli(envWithCert, 'env section');
-    send('success', 'Environment section encrypted with HPCR certificate.');
+    send('success', 'Environment section encrypted with runtime encryption certificate.');
 
     const encryptedAttestationPubKey = await runCli(attestationPublicKey, 'attestation public key');
-    send('success', 'Attestation public key encrypted with HPCR certificate.');
+    send('success', 'Attestation public key encrypted with runtime encryption certificate.');
 
     send('result', 'Both artifacts ready for contract assembly.');
     return { encryptedEnv, encryptedAttestationPubKey };

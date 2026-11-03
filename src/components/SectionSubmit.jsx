@@ -10,8 +10,6 @@ import {
   Modal,
   RadioButton,
   RadioButtonGroup,
-  Select,
-  SelectItem,
   Tag,
   TextArea,
   Tile,
@@ -19,7 +17,7 @@ import {
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
-import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
+import RuntimeCertificateSelect from './RuntimeCertificateSelect';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
 import {
@@ -28,6 +26,7 @@ import {
   validateSubmissionYaml,
 } from '../utils/submissionForm';
 import AuditorSection from './AuditorSection';
+import { prepareContractInput, PODMAN_WORKLOAD_TEMPLATE } from '../utils/contractInput';
 
 const ROLE_CONFIG = {
   SOLUTION_PROVIDER: {
@@ -78,13 +77,14 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const [yamlError, setYamlError] = useState('');
   const [certificateError, setCertificateError] = useState('');
   const [certSource, setCertSource] = useState('custom');
-  const [platformId, setPlatformId] = useState(PLATFORMS[0].id);
-  const [certId, setCertId] = useState(getCertsByPlatform(PLATFORMS[0].id)[0]?.id || '');
+  const [runtimeCertificate, setRuntimeCertificate] = useState(null);
   const [draft, setDraft] = useState(null);
   const [draftError, setDraftError] = useState('');
   const [reading, setReading] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validatedYaml, setValidatedYaml] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const contextRequest = useRef(0);
@@ -133,12 +133,12 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const submitted = existingSection || receipt;
   const correctStage = liveStatus === config.requiredStatus;
   const locked = !loaded || loading || !!contextError || !correctStage || !!submitted;
-  const busy = submitting || reading || loadingTemplate;
+  const busy = submitting || reading || loadingTemplate || validating;
   const disabled = locked || busy;
   const activeCertificate =
-    certSource === 'custom' ? certificate.content : getCertById(certId)?.cert || '';
+    certSource === 'custom' ? certificate.content : runtimeCertificate?.certificate_pem || '';
   const certificateName =
-    certSource === 'custom' ? certificate.name : getCertById(certId)?.label || '';
+    certSource === 'custom' ? certificate.name : runtimeCertificate?.name || '';
   const hasYaml = !!yaml.content.trim();
   const hasCertificate = hasCertificateContent(activeCertificate);
   const ready = hasYaml && hasCertificate && !locked;
@@ -162,7 +162,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
       const content = await file.text();
       if (request !== fileRequest.current) return;
       if (kind === 'yaml') {
-        const message = validateSubmissionYaml(content);
+        const message = validateSubmissionYaml(content, config.templateType);
         if (message) setYamlError(message);
         else openEditor(content, file.name);
       } else if (!hasCertificateContent(content)) {
@@ -188,7 +188,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
       const result = await buildService.getContractTemplate(config.templateType);
       if (request !== templateRequest.current) return;
       const content = typeof result?.content === 'string' ? result.content : '';
-      const message = validateSubmissionYaml(content);
+      const message = validateSubmissionYaml(content, config.templateType);
       if (message) setYamlError(message);
       else openEditor(content, `${config.fileLabel}-template.yaml`);
     } catch (err) {
@@ -201,21 +201,41 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
 
   const applyDraft = () => {
     if (disabled || !draft) return;
-    const message = validateSubmissionYaml(draft.content);
+    const message = validateSubmissionYaml(draft.content, config.templateType);
     setDraftError(message);
     if (message) return;
     setYaml(draft);
+    setValidatedYaml('');
     setYamlError('');
     setDraft(null);
   };
 
-  const submit = async () => {
+  const reviewSubmission = async () => {
     if (!ready || busy || submittingRef.current) return;
+    submittingRef.current = true;
+    setValidating(true);
+    setError('');
+    try {
+      const input = prepareContractInput(yaml.content, config.templateType);
+      const result = await buildService.validateContractInput(input, config.templateType);
+      if (!mounted.current) return;
+      setValidatedYaml(result.plaintext);
+      setReviewOpen(true);
+    } catch (err) {
+      if (mounted.current) setError(err.message || 'Contract validation failed.');
+    } finally {
+      submittingRef.current = false;
+      if (mounted.current) setValidating(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!ready || !validatedYaml || busy || submittingRef.current) return;
     submittingRef.current = true;
     setSubmitting(true);
     setError('');
     try {
-      const payload = { plaintext: yaml.content, certificate_pem: activeCertificate };
+      const payload = { plaintext: validatedYaml, certificate_pem: activeCertificate };
       const result =
         personaRole === 'SOLUTION_PROVIDER'
           ? await buildService.submitWorkloadV2(buildId, payload)
@@ -279,6 +299,15 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
           </Button>
         </div>
       )}
+      {error && !reviewOpen && (
+        <InlineNotification
+          kind="error"
+          title="Contract validation failed"
+          subtitle={error}
+          lowContrast
+          hideCloseButton
+        />
+      )}
       {submitted ? (
         <Tile className="submission-form__complete">
           <CheckmarkFilled size={24} className="submission-form__complete-icon" />
@@ -331,8 +360,10 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                 <p className="submission-form__eyebrow">Step 1</p>
                 <h3>{config.label} YAML</h3>
                 <p className="submission-form__help">
-                  Upload a .yaml or .yml file, start with a template, or paste your YAML. Maximum
-                  file size: 50 MB.
+                  Upload a .yaml or .yml file, start with a template, or paste your YAML. Raw
+                  sections and complete plaintext contracts are accepted. Maximum file size: 50 MB.
+                  {personaRole === 'SOLUTION_PROVIDER' &&
+                    ' Podman play accepts play.archive, play.resources, play.templates, or uploaded Pod and ConfigMap YAML.'}
                 </p>
                 <FileUploaderDropContainer
                   id={`yaml-file-${personaRole}`}
@@ -352,6 +383,16 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   >
                     {loadingTemplate ? 'Loading template…' : 'Use template'}
                   </Button>
+                  {personaRole === 'SOLUTION_PROVIDER' && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      disabled={disabled}
+                      onClick={() => openEditor(PODMAN_WORKLOAD_TEMPLATE, 'podman-workload.yaml')}
+                    >
+                      Use Podman play template
+                    </Button>
+                  )}
                   <Button
                     kind="ghost"
                     size="sm"
@@ -388,7 +429,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                 <p className="submission-form__eyebrow">Step 2</p>
                 <h3>Encryption certificate</h3>
                 <p className="submission-form__help">
-                  Choose the HPCR certificate for the environment where this contract will run.
+                  Choose the runtime encryption certificate for the environment where this contract will run.
                 </p>
                 <RadioButtonGroup
                   name={`cert-source-${personaRole}`}
@@ -397,6 +438,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   valueSelected={certSource}
                   disabled={disabled}
                   onChange={(value) => {
+                    setRuntimeCertificate(null);
                     setCertSource(value);
                     setCertificateError('');
                   }}
@@ -409,7 +451,8 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   <RadioButton
                     id={`cert-builtin-${personaRole}`}
                     value="builtin"
-                    labelText="Use built-in certificate"
+                    labelText="Choose platform and version"
+                    disabled={disabled}
                   />
                 </RadioButtonGroup>
                 {certSource === 'custom' ? (
@@ -439,39 +482,12 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                     )}
                   </div>
                 ) : (
-                  <div className="submission-form__certificate submission-form__selects">
-                    <Select
-                      id={`platform-${personaRole}`}
-                      labelText="Platform"
-                      value={platformId}
-                      disabled={disabled}
-                      onChange={(event) => {
-                        setPlatformId(event.target.value);
-                        setCertId(getCertsByPlatform(event.target.value)[0]?.id || '');
-                      }}
-                    >
-                      {PLATFORMS.filter((platform) => getCertsByPlatform(platform.id).length).map(
-                        (platform) => (
-                          <SelectItem key={platform.id} value={platform.id} text={platform.label} />
-                        )
-                      )}
-                    </Select>
-                    <Select
-                      id={`certificate-${personaRole}`}
-                      labelText="Certificate"
-                      value={certId}
-                      disabled={disabled}
-                      onChange={(event) => setCertId(event.target.value)}
-                    >
-                      {getCertsByPlatform(platformId).map((cert) => (
-                        <SelectItem
-                          key={cert.id}
-                          value={cert.id}
-                          text={cert.version || cert.label}
-                        />
-                      ))}
-                    </Select>
-                  </div>
+                  <RuntimeCertificateSelect
+                    key={buildId}
+                    id={`runtime-certificate-${personaRole}`}
+                    disabled={disabled}
+                    onChange={setRuntimeCertificate}
+                  />
                 )}
                 {certificateError && (
                   <InlineNotification
@@ -505,12 +521,9 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
               <Button
                 renderIcon={ArrowRight}
                 disabled={!ready || busy}
-                onClick={() => {
-                  setError('');
-                  setReviewOpen(true);
-                }}
+                onClick={reviewSubmission}
               >
-                Review submission
+                {validating ? 'Validating YAML…' : 'Validate and review'}
               </Button>
             </Tile>
           </Layer>
@@ -554,7 +567,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
         loadingDescription="Submitting…"
         primaryButtonText={submitting ? 'Submitting…' : `Submit ${config.fileLabel}`}
         secondaryButtonText="Back to editing"
-        primaryButtonDisabled={!ready || busy}
+        primaryButtonDisabled={!ready || !validatedYaml || busy}
         onRequestSubmit={submit}
         onRequestClose={() => {
           if (!submitting) setReviewOpen(false);
@@ -565,8 +578,9 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
         preventCloseOnClickOutside
       >
         <p className="submission-form__help">
-          Check your YAML and certificate before submitting. Once submitted, this section cannot be
-          edited.
+          The backend checked this section against the CCRT contract schema. Complete contract inputs
+          are checked as a pair. Certificate validity is checked during encryption. Once submitted,
+          this section cannot be edited.
         </p>
         {error && (
           <InlineNotification
@@ -580,7 +594,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
         <SubmissionSummary {...summary} />
         <h3 className="submission-form__preview-title">{config.label} YAML</h3>
         <CodeSnippet type="multi" wrapText>
-          {yaml.content}
+          {validatedYaml}
         </CodeSnippet>
       </Modal>
       <Modal

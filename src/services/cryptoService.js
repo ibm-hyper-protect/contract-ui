@@ -156,7 +156,7 @@ class CryptoService {
   /**
    * Encrypt section with contract-cli
    * @param {string} plainText - Content to encrypt
-   * @param {string} certContent - HPCR encryption certificate content
+   * @param {string} certContent - runtime encryption certificate content
    * @returns {Promise<string>} - Encrypted string (hyper-protect-basic.xxx.yyy)
    */
   async encryptSection(plainText, certContent) {
