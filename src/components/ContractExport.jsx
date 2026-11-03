@@ -1,465 +1,309 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Button,
-  Modal,
-  InlineNotification,
-  CodeSnippet,
-  Tile,
-  Tag,
-  Loading,
-  ProgressBar
-} from '@carbon/react';
-import {
-  DocumentExport,
-  CheckmarkFilled,
-  View,
-  Information
-} from '@carbon/icons-react';
+import React, { useState } from 'react';
+import { Button, Layer, Tag, Tile } from '@carbon/react';
+import { Checkmark, Download, Renew, View } from '@carbon/icons-react';
 import { useBuildStore } from '../store/buildStore';
+import buildService from '../services/buildService';
 import exportService from '../services/exportService';
 import verificationService from '../services/verificationService';
-import { formatDate } from '../utils/formatters';
+import { BUILD_STATUS, BUILD_STATUS_CONFIG } from '../utils/constants';
+import { getContractContent } from '../utils/contractContent';
+import {
+  CompletionNotice,
+  ContractMetadata,
+  ContractPreview,
+  useCompletionOperation,
+} from './ContractCompletion';
 
-/**
- * ContractExport Component
- * Handles contract export, preview, and download acknowledgment
- * Features: Export button, YAML preview, download with signature, verification
- */
-const ContractExport = ({ buildId, buildStatus, onStatusUpdate }) => {
-  const { getBuildExportData } = useBuildStore();
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
-  // Export state
+function ContractExportForm({ buildId, buildStatus, onStatusUpdate }) {
   const [exportData, setExportData] = useState(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [content, setContent] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [saved, setSaved] = useState(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+  const [verification, setVerification] = useState(null);
+  const { active, operation, begin, end } = useCompletionOperation();
+  const downloaded =
+    acknowledged || buildStatus === BUILD_STATUS.CONTRACT_DOWNLOADED;
+  const ready = buildStatus === BUILD_STATUS.FINALIZED && !downloaded;
+  const busy = !!operation;
 
-  // Verification state
-  const [verificationResult, setVerificationResult] = useState(null);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [showVerifyInfo, setShowVerifyInfo] = useState(false);
-  const [downloadLocked, setDownloadLocked] = useState(buildStatus === 'CONTRACT_DOWNLOADED');
-
-  // Export only available when build is FINALIZED and not already downloaded.
-  const buildFinalized = buildStatus === 'FINALIZED';
-  const buildDownloaded = buildStatus === 'CONTRACT_DOWNLOADED';
-
-  useEffect(() => {
-    setDownloadLocked(buildStatus === 'CONTRACT_DOWNLOADED');
-  }, [buildStatus]);
-
-  useEffect(() => {
-    // Load cached export data if available
-    const cached = getBuildExportData(buildId);
-    if (cached) {
-      setExportData(cached);
-    }
-  }, [buildId, getBuildExportData]);
-
-  const handleExport = async () => {
-    setLoading(true);
+  async function loadContract() {
+    if (!ready || saved || !begin('load')) return;
     setError(null);
-
+    setCancelled(false);
     try {
       const data = await exportService.exportContract(buildId);
+      const yaml = getContractContent(data);
+      if (!data.contract_hash)
+        throw new Error(
+          'The server did not return a contract hash. Try loading it again.',
+        );
+      if (!active.current) return;
       setExportData(data);
-      setSuccess('Contract exported successfully');
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
+      setContent(yaml);
     } catch (err) {
-      if (err?.message?.toLowerCase().includes('already been downloaded')) {
-        setDownloadLocked(true);
-        onStatusUpdate?.('CONTRACT_DOWNLOADED');
-        setSuccess('Contract already downloaded and acknowledged. Re-download is disabled.');
-        return;
+      if (!active.current) return;
+      // Another operator may have acknowledged this build while this tab was open.
+      const build = await buildService.getBuild(buildId).catch(() => null);
+      if (!active.current) return;
+      if (build?.status === BUILD_STATUS.CONTRACT_DOWNLOADED) {
+        setAcknowledged(true);
+        onStatusUpdate?.(BUILD_STATUS.CONTRACT_DOWNLOADED);
+      } else
+        setError({
+          title: 'Contract could not be loaded',
+          message: err.message,
+        });
+    } finally {
+      end();
+    }
+  }
+
+  async function acknowledge(receipt) {
+    try {
+      await exportService.acknowledgeDownload(buildId, receipt.hash);
+    } catch (err) {
+      // A lost response does not mean the acknowledgement was rejected.
+      const build = await buildService.getBuild(buildId).catch(() => null);
+      if (build?.status !== BUILD_STATUS.CONTRACT_DOWNLOADED) throw err;
+    }
+    useBuildStore
+      .getState()
+      .updateBuildStatus(buildId, BUILD_STATUS.CONTRACT_DOWNLOADED);
+    if (!active.current) return;
+    setAcknowledged(true);
+    setPreviewOpen(false);
+    onStatusUpdate?.(BUILD_STATUS.CONTRACT_DOWNLOADED);
+  }
+
+  async function saveAndAcknowledge() {
+    if (!ready || !exportData || !content || !begin('save')) return;
+    setError(null);
+    setCancelled(false);
+    let receipt = saved;
+    try {
+      if (!receipt) {
+        const result = await exportService.saveContractLocally(
+          buildId,
+          content,
+          `contract-${buildId}.yaml`,
+        );
+        receipt = { path: result.path, hash: exportData.contract_hash };
+        if (active.current) setSaved(receipt);
       }
-      setError(`Failed to export contract: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePreview = () => {
-    if (!exportData) {
-      handleExport().then(() => setIsPreviewOpen(true));
-    } else {
-      setIsPreviewOpen(true);
-    }
-  };
-
-  const handleDownload = async () => {
-    if (!exportData) {
-      setError('No export data available. Please export first.');
-      return;
-    }
-
-    setIsExporting(true);
-    setError(null);
-
-    try {
-      // Save contract locally and acknowledge download
-      const result = await exportService.exportAndSave(
-        buildId,
-        `contract-${buildId}.yaml`
-      );
-
-      setSuccess(`Contract saved to: ${result.path}`);
-      setDownloadLocked(true);
-      onStatusUpdate?.('CONTRACT_DOWNLOADED');
-      setIsPreviewOpen(false);
-
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccess(null), 5000);
+      // A retry sends only the acknowledgement; it never saves a second file.
+      await acknowledge(receipt);
     } catch (err) {
-      setError(`Failed to download contract: ${err.message}`);
+      if (!active.current) return;
+      setPreviewOpen(false);
+      if (err.code === 'SAVE_CANCELLED') setCancelled(true);
+      else
+        setError({
+          title: receipt
+            ? 'File saved — acknowledgement pending'
+            : 'Contract could not be saved',
+          message: receipt
+            ? `Saved to ${receipt.path}. ${err.message} Retry the acknowledgement to finish this build.`
+            : err.message,
+        });
     } finally {
-      setIsExporting(false);
+      end();
     }
-  };
+  }
 
-  const handleVerify = async () => {
-    setIsVerifying(true);
+  async function verify() {
+    if ((!ready && !downloaded) || !begin('verify')) return;
     setError(null);
-
+    setVerification(null);
     try {
-      // Verify contract integrity
       const result = await verificationService.verifyContractIntegrity(buildId);
-      setVerificationResult(result);
-
-      if (result.valid) {
-        setSuccess('Contract verification passed');
-      } else {
-        const reason = (result.errors && result.errors.length > 0)
-          ? result.errors[0]
-          : (result.details || 'Contract integrity checks did not pass.');
-        setError(`Contract verification failed: ${reason}`);
-      }
+      if (active.current) setVerification(result);
     } catch (err) {
-      setError(`Verification failed: ${err.message}`);
+      if (active.current)
+        setError({ title: 'Verification unavailable', message: err.message });
     } finally {
-      setIsVerifying(false);
+      end();
     }
-  };
-
-  const getExportStatus = () => {
-    if (downloadLocked || buildDownloaded) {
-      return {
-        canExport: false,
-        message: 'Contract already downloaded and acknowledged. Re-download is disabled.',
-        severity: 'warning'
-      };
-    }
-
-    if (!buildFinalized) {
-      return {
-        canExport: false,
-        message: `Build must be FINALIZED before export. Current status: ${buildStatus || 'unknown'}.`,
-        severity: 'warning'
-      };
-    }
-
-    if (!exportData) {
-      return {
-        canExport: true,
-        message: 'Ready to export contract',
-        severity: 'info'
-      };
-    }
-
-    return {
-      canExport: true,
-      message: 'Contract exported and ready for download',
-      severity: 'success'
-    };
-  };
-
-  const status = getExportStatus();
-
-  const formatYAML = (yaml) => {
-    // Add syntax highlighting hints
-    return yaml;
-  };
-
-  const getContractMetadata = () => {
-    if (!exportData) return null;
-
-    return {
-      hash: exportData.contract_hash,
-      size: exportData.contract_yaml?.length || 0,
-      sections: exportData.sections?.length || 0,
-      exportedAt: exportData.exported_at || new Date().toISOString()
-    };
-  };
-
-  const metadata = getContractMetadata();
+  }
 
   return (
-    <div className="contract-export">
-      {error && (
-        <InlineNotification
-          kind="error"
-          title="Error"
-          subtitle={error}
-          onCloseButtonClick={() => setError(null)}
-          lowContrast
-        />
-      )}
-
-      {success && (
-        <InlineNotification
-          kind="success"
-          title="Success"
-          subtitle={success}
-          onCloseButtonClick={() => setSuccess(null)}
-          lowContrast
-        />
-      )}
-
-      <Tile className="contract-export__tile">
-        <div className="contract-export__header">
-          <div className="contract-export__header-content">
-            <DocumentExport size={24} />
-            <h2 className="app-section-heading">Contract export</h2>
-          </div>
-          {exportData && (
-            <Tag type="green" renderIcon={CheckmarkFilled}>
-              Exported
-            </Tag>
-          )}
+    <section
+      className="contract-completion"
+      aria-labelledby="export-contract-heading"
+    >
+      <header className="contract-completion__header">
+        <div>
+          <h2 id="export-contract-heading">Export contract</h2>
+          <p>
+            Review the signed contract, save a local copy, and acknowledge the
+            download.
+          </p>
         </div>
+        <Tag
+          type={downloaded ? 'green' : saved ? 'blue' : ready ? 'teal' : 'gray'}
+        >
+          {downloaded
+            ? 'Downloaded'
+            : saved
+              ? 'Acknowledgement pending'
+              : ready
+                ? 'Ready to export'
+                : 'Waiting for finalisation'}
+        </Tag>
+      </header>
+      {error && (
+        <CompletionNotice title={error.title}>{error.message}</CompletionNotice>
+      )}
+      {cancelled && (
+        <CompletionNotice kind="info" title="Save cancelled">
+          No file was saved and no acknowledgement was sent. You can try again.
+        </CompletionNotice>
+      )}
+      {!ready && !downloaded && (
+        <CompletionNotice
+          kind="info"
+          title={
+            buildStatus === BUILD_STATUS.CANCELLED
+              ? 'Build cancelled'
+              : 'Finalise the contract first'
+          }
+        >
+          {buildStatus === BUILD_STATUS.CANCELLED
+            ? 'A cancelled build cannot be exported.'
+            : `The assigned auditor must finalise this build before it can be exported. Current stage: ${BUILD_STATUS_CONFIG[buildStatus]?.label || 'Unknown'}.`}
+        </CompletionNotice>
+      )}
 
-        <InlineNotification
-          kind={status.severity}
-          title={status.canExport ? 'Ready' : 'Not Ready'}
-          subtitle={status.message}
-          lowContrast
-          hideCloseButton
-        />
+      <Layer>
+        <Tile className="contract-completion__card">
+          <h3>
+            {downloaded
+              ? 'Download acknowledged'
+              : saved
+                ? 'File saved'
+                : 'Review and download'}
+          </h3>
+          <p>
+            {downloaded
+              ? 'The contract download has been acknowledged. Another download is unavailable for this build.'
+              : saved
+                ? 'The contract was saved locally. Retry its signed acknowledgement to complete this build.'
+                : 'Load the final contract to inspect its contents before saving. Loading and previewing do not acknowledge a download.'}
+          </p>
+          {saved && (
+            <p className="contract-completion__path">Saved to {saved.path}</p>
+          )}
+          {exportData && (
+            <ContractMetadata data={exportData} content={content} />
+          )}
+          {!downloaded && (
+            <div className="contract-completion__actions">
+              {saved ? (
+                <Button
+                  renderIcon={Renew}
+                  onClick={saveAndAcknowledge}
+                  disabled={!ready || busy}
+                >
+                  {operation === 'save'
+                    ? 'Sending acknowledgement…'
+                    : 'Retry acknowledgement'}
+                </Button>
+              ) : exportData ? (
+                <>
+                  <Button
+                    renderIcon={Download}
+                    onClick={saveAndAcknowledge}
+                    disabled={!ready || busy}
+                  >
+                    {operation === 'save'
+                      ? 'Saving contract…'
+                      : 'Save and acknowledge'}
+                  </Button>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={View}
+                    onClick={() => setPreviewOpen(true)}
+                    disabled={!ready || busy}
+                  >
+                    Preview contract
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  renderIcon={Download}
+                  onClick={loadContract}
+                  disabled={!ready || busy}
+                >
+                  {operation === 'load' ? 'Loading contract…' : 'Load contract'}
+                </Button>
+              )}
+            </div>
+          )}
+        </Tile>
+      </Layer>
 
-        {metadata && (
-          <div className="contract-export__metadata">
-            <div className="contract-export__metadata-row">
-              <span className="contract-export__metadata-label">Contract Hash:</span>
-              <CodeSnippet type="inline" feedback="Copied">
-                {metadata.hash.substring(0, 16)}...
-              </CodeSnippet>
-            </div>
-            <div className="contract-export__metadata-row">
-              <span className="contract-export__metadata-label">Size:</span>
-              <span>{(metadata.size / 1024).toFixed(2)} KB</span>
-            </div>
-            <div className="contract-export__metadata-row">
-              <span className="contract-export__metadata-label">Sections:</span>
-              <span>{metadata.sections}</span>
-            </div>
-            <div className="contract-export__metadata-row">
-              <span className="contract-export__metadata-label">Exported:</span>
-              <span>{formatDate(metadata.exportedAt, { second: '2-digit', timeZoneName: 'short' })}</span>
-            </div>
+      <Layer>
+        <Tile className="contract-completion__card">
+          <div className="contract-completion__card-heading">
+            <h3>Contract integrity</h3>
+            {verification && (
+              <Tag type={verification.valid ? 'green' : 'red'}>
+                {verification.valid ? 'Verified' : 'Check failed'}
+              </Tag>
+            )}
           </div>
-        )}
-
-        {verificationResult && (
-          <div className="contract-export__verification-result">
-            <InlineNotification
-              kind={verificationResult.valid ? 'success' : 'error'}
-              title={verificationResult.valid ? 'Verification Passed' : 'Verification Failed'}
-              subtitle={verificationResult.valid
-                ? 'Contract integrity verified successfully'
-                : (
-                  (verificationResult.errors?.length || 0) > 0
-                    ? `${verificationResult.errors.length} error(s): ${verificationResult.errors.join('; ')}`
-                    : (verificationResult.details || 'Contract integrity checks did not pass.')
-                )
+          <p>
+            Check the contract hash and section integrity against the server
+            records. Verification does not save or download the contract.
+          </p>
+          {verification && (
+            <CompletionNotice
+              kind={verification.valid ? 'success' : 'error'}
+              title={
+                verification.valid
+                  ? 'Integrity checks passed'
+                  : 'Integrity checks failed'
               }
-              lowContrast
-            />
-          </div>
-        )}
-
-        <div className="contract-export__actions">
-          <Button
-            kind="primary"
-            renderIcon={DocumentExport}
-            onClick={handleExport}
-            disabled={!status.canExport || loading}
-          >
-            {loading ? 'Exporting...' : exportData ? 'Re-export' : 'Export Contract'}
-          </Button>
-
-          <Button
-            kind="secondary"
-            renderIcon={View}
-            onClick={handlePreview}
-            disabled={!status.canExport}
-          >
-            Preview
-          </Button>
-
-          <div className="contract-export__verify-actions">
+            >
+              {verification.valid
+                ? 'The server reports that the contract and its sections are intact.'
+                : verification.errors?.join(' ') ||
+                  verification.details ||
+                  'The contract did not pass integrity checks. Contact the build auditor before using it.'}
+            </CompletionNotice>
+          )}
+          <div className="contract-completion__actions">
             <Button
               kind="tertiary"
-              renderIcon={CheckmarkFilled}
-              onClick={handleVerify}
-              disabled={isVerifying}
+              renderIcon={Checkmark}
+              onClick={verify}
+              disabled={(!ready && !downloaded) || busy}
             >
-              {isVerifying ? 'Verifying...' : 'Verify'}
+              {operation === 'verify'
+                ? 'Verifying contract…'
+                : verification
+                  ? 'Verify again'
+                  : 'Verify integrity'}
             </Button>
-            <Button
-              kind="ghost"
-              size="md"
-              hasIconOnly
-              renderIcon={Information}
-              iconDescription="How contract verification works"
-              onClick={() => setShowVerifyInfo(true)}
-            />
           </div>
-        </div>
-      </Tile>
-
-      <Modal
-        open={isPreviewOpen}
-        onRequestClose={() => setIsPreviewOpen(false)}
-        modalHeading="Contract Preview"
-        modalLabel={`Build ${buildId}`}
-        primaryButtonText="Download & Acknowledge"
-        secondaryButtonText="Close"
-        onRequestSubmit={handleDownload}
-        onSecondarySubmit={() => setIsPreviewOpen(false)}
-        primaryButtonDisabled={isExporting}
-        size="lg"
-        hasScrollingContent
-      >
-        {isExporting && (
-          <div className="contract-export__exporting-overlay">
-            <Loading description="Saving contract and generating signature..." withOverlay={false} />
-            <ProgressBar label="Download Progress" helperText="Signing with your private key..." />
-          </div>
-        )}
-
-        {exportData && (
-          <div className="contract-export__preview-content">
-            <InlineNotification
-              kind="info"
-              title="Download Acknowledgment"
-              subtitle="Downloading will create a cryptographic signature with your private key for non-repudiation."
-              lowContrast
-              hideCloseButton
-            />
-
-            <div className="contract-export__info">
-              <h5>Contract Information</h5>
-              <div className="contract-export__info-grid">
-                <div className="contract-export__info-item">
-                  <span className="contract-export__info-label">Build ID:</span>
-                  <span className="contract-export__info-value">{buildId}</span>
-                </div>
-                <div className="contract-export__info-item">
-                  <span className="contract-export__info-label">Sections:</span>
-                  <span className="contract-export__info-value">{exportData.sections?.length || 0}</span>
-                </div>
-                <div className="contract-export__info-item contract-export__info-item--hash">
-                  <span className="contract-export__info-label">Hash:</span>
-                  <CodeSnippet
-                    type="single"
-                    feedback="Copied"
-                    className="contract-export__hash-snippet"
-                  >
-                    {exportData.contract_hash}
-                  </CodeSnippet>
-                </div>
-              </div>
-            </div>
-
-            <div className="contract-export__yaml-preview">
-              <h5>Contract YAML</h5>
-              <CodeSnippet
-                type="multi"
-                feedback="Copied to clipboard"
-                wrapText
-              >
-                {formatYAML(exportData.contract_yaml)}
-              </CodeSnippet>
-            </div>
-
-            {exportData.sections && exportData.sections.length > 0 && (
-              <div className="contract-export__sections-info">
-                <h5>Included Sections</h5>
-                <div className="contract-export__sections-list">
-                  {exportData.sections.map((section, index) => (
-                    <Tile key={index} className="contract-export__section-tile">
-                      <div className="contract-export__section-header">
-                        <Tag type="blue">{section.persona_role}</Tag>
-                        <span className="contract-export__section-submitter">
-                          by {section.submitted_by_name}
-                        </span>
-                      </div>
-                      <div className="contract-export__section-details">
-                        <span className="section-hash">
-                          Hash: {section.section_hash.substring(0, 16)}...
-                        </span>
-                        <span className="section-date">
-                          {new Date(section.submitted_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </Tile>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        open={showVerifyInfo}
-        passiveModal
-        modalHeading="How Verify Works"
-        onRequestClose={() => setShowVerifyInfo(false)}
-      >
-        <div className="contract-export__verify-info">
-          <p>
-            The <strong>Verify</strong> button runs backend integrity checks for this exported contract.
-          </p>
-          <div className="contract-export__verify-info-meta">
-            <div>
-              <strong>Build:</strong> <code>{buildId}</code>
-            </div>
-            {exportData?.contract_hash && (
-              <div>
-                <strong>Contract hash:</strong>{' '}
-                <code>{`${exportData.contract_hash.substring(0, 16)}...`}</code>
-              </div>
-            )}
-          </div>
-          <ol>
-            <li>
-              Backend confirms the build is in a valid terminal state (finalized or downloaded) and contract data exists.
-            </li>
-            <li>
-              It recalculates SHA-256 from stored contract YAML and compares it with saved
-              <code> contract_hash</code>.
-            </li>
-            <li>
-              It finds the <code>BUILD_FINALIZED</code> audit event and verifies its signature against
-              the auditor&apos;s registered public key.
-            </li>
-            <li>
-              If all checks pass, you see <strong>Verification Passed</strong> and
-              <strong> Contract integrity verified successfully</strong>.
-            </li>
-          </ol>
-          <p>
-            If any check fails, the result shows the exact failure reason so the issue can be investigated.
-          </p>
-        </div>
-      </Modal>
-    </div>
+        </Tile>
+      </Layer>
+      <ContractPreview
+        open={previewOpen}
+        content={content}
+        buildId={buildId}
+        onClose={() => {
+          if (!busy) setPreviewOpen(false);
+        }}
+        download={ready && !saved ? saveAndAcknowledge : undefined}
+        busy={operation === 'save'}
+      />
+    </section>
   );
-};
+}
 
-export default ContractExport;
+export default function ContractExport(props) {
+  return <ContractExportForm key={props.buildId} {...props} />;
+}
