@@ -176,7 +176,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
       const result = await buildService.verifyAttestationEvidence(
         buildId,
         latestEvidenceId,
-        attestationKeyPassphrase.trim()
+        attestationKeyPassphrase
       );
       setVerifyResult(result);
       const verdict = String(result?.verdict || 'UNKNOWN').toUpperCase();

@@ -189,7 +189,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
     try {
       const result = await buildService.registerSigningKey(buildId, {
         mode: 'generate',
-        passphrase: signingPassphrase.trim()
+        passphrase: signingPassphrase
       });
       setSigningResult(result);
       const nextSigningKeyID = result?.signing_key_id || result?.key_id || '';
@@ -275,7 +275,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
     try {
       const result = await buildService.registerAttestationKey(buildId, {
         mode: 'generate',
-        passphrase: attestationPassphrase.trim(),
+        passphrase: attestationPassphrase,
         encryption_cert_pem: certContent
       });
       setAttestationResult(result);
