@@ -1,11 +1,35 @@
 import apiClient from './apiClient';
 import { useAuthStore } from '../store/authStore';
+import userKeyService, { isActiveKey } from './userKeyService';
 
 /**
  * Rotation Service - Credential rotation monitoring
  * Handles password and public key expiry monitoring and enforcement
  */
 class RotationService {
+  /** Load complete histories for enabled accounts; a failed read must not become a legacy fallback. */
+  async getKeyInventory(users) {
+    const entries = await Promise.all(users.filter(user => user.is_active).map(async user => (
+      [user.id, await userKeyService.list(user.id)]
+    )));
+    return Object.fromEntries(entries);
+  }
+
+  /** Revoke selected devices individually, preserving unrelated keys and partial results. */
+  async bulkRevokeCredentialKeys(items) {
+    const results = { success: [], failed: [] };
+    for (const { userId, keyId } of items) {
+      try {
+        if (!userId || !keyId) throw new Error('A user and device key are required.');
+        await userKeyService.revoke(userId, keyId);
+        results.success.push({ userId, keyId });
+      } catch (error) {
+        results.failed.push({ userId, keyId, error: error.message });
+      }
+    }
+    return results;
+  }
+
   /**
    * Get expired credentials (admin only)
    * @returns {Promise<Object>} - {expired_passwords: Array, expired_keys: Array}
@@ -80,33 +104,18 @@ class RotationService {
       };
     }
 
-    // Check key expiry
-    if (user.public_key_expires_at) {
-      const expiresAt = new Date(user.public_key_expires_at);
-      const daysUntilExpiry = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-
-      if (daysUntilExpiry <= 0) {
-        status.warnings.push({
-          type: 'key',
-          severity: 'error',
-          message: 'Your public key has expired. Please register a new key.',
-          daysOverdue: Math.abs(daysUntilExpiry)
-        });
-      } else if (daysUntilExpiry <= 7) {
-        status.warnings.push({
-          type: 'key',
-          severity: 'warning',
-          message: `Your public key will expire in ${daysUntilExpiry} days.`,
-          daysUntilExpiry
-        });
-      }
-
+    const localKey = useAuthStore.getState().localIdentityKey;
+    if (localKey) {
+      const daysUntilExpiry = Math.ceil((new Date(localKey.expires_at) - Date.now()) / 86400000);
+      const usable = isActiveKey(localKey);
       status.keyExpiry = {
-        expiresAt: user.public_key_expires_at,
-        daysUntilExpiry,
-        isExpired: daysUntilExpiry <= 0,
-        fingerprint: user.public_key_fingerprint
+        expiresAt: localKey.expires_at, daysUntilExpiry,
+        isExpired: !usable, fingerprint: localKey.fingerprint
       };
+      if (!usable || daysUntilExpiry <= 7) status.warnings.push({
+        type: 'key', severity: usable ? 'warning' : 'error',
+        message: usable ? `This device key expires in ${daysUntilExpiry} days.` : 'This device key cannot sign. Open Account Settings.'
+      });
     }
 
     return status;
@@ -159,54 +168,30 @@ class RotationService {
    * @returns {Promise<Array>}
    */
   async getUsersExpiringSoon(days = 7) {
-    const expiredData = await this.getExpiredCredentials();
-    const threshold = Date.now() + (days * 24 * 60 * 60 * 1000);
-
-    const expiringSoon = [];
-
-    // Expiring-soon passwords: must_change=false, password not yet expired, but within threshold
-    if (expiredData.expired_passwords) {
-      expiredData.expired_passwords.forEach(user => {
-        if (user.must_change) return; // already expired, belongs in expired tab not expiring-soon
-        const changedAt = new Date(user.last_changed);
-        const expiryDate = new Date(changedAt.getTime() + (90 * 24 * 60 * 60 * 1000));
-        const daysUntilExpiry = Math.ceil((expiryDate - Date.now()) / (1000 * 60 * 60 * 24));
-        if (daysUntilExpiry > 0 && expiryDate.getTime() <= threshold) {
-          expiringSoon.push({
-            user_id: user.user_id,
-            username: user.user_name,
-            full_name: user.user_name,
-            email: user.user_email,
-            type: 'password',
-            password_expires_at: expiryDate.toISOString(),
-            days_until_expiry: daysUntilExpiry
-          });
-        }
+    const { data } = await apiClient.get('/users');
+    const users = (data.users || []).filter(user => user.is_active);
+    const now = Date.now();
+    const threshold = now + days * 86400000;
+    const rows = await Promise.all(users.map(async user => {
+      const identity = { user_id: user.id, username: user.name, full_name: user.name, email: user.email };
+      const result = [];
+      const passwordExpiry = new Date(user.password_expires_at).getTime();
+      if (!user.must_change_password && passwordExpiry > now && passwordExpiry <= threshold) result.push({
+        ...identity, type: 'password', password_expires_at: user.password_expires_at,
+        days_until_expiry: Math.ceil((passwordExpiry - now) / 86400000)
       });
-    }
-
-    // Expiring-soon keys: registered, not yet expired, but within threshold
-    if (expiredData.expired_public_keys) {
-      expiredData.expired_public_keys.forEach(user => {
-        if (!user.expires_at || user.expires_at.startsWith('0001-')) return; // never registered
-        const expiresAt = new Date(user.expires_at);
-        const daysUntilExpiry = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-        if (daysUntilExpiry > 0 && expiresAt.getTime() <= threshold) {
-          expiringSoon.push({
-            user_id: user.user_id,
-            username: user.user_name,
-            full_name: user.user_name,
-            email: user.user_email,
-            type: 'key',
-            key_expires_at: user.expires_at,
-            key_fingerprint: null,
-            days_until_expiry: daysUntilExpiry
-          });
-        }
+      const keys = await userKeyService.list(user.id);
+      keys.filter(isActiveKey).forEach(key => {
+        const expires = new Date(key.expires_at).getTime();
+        if (expires <= threshold) result.push({
+          ...identity, type: 'key', key_id: key.id, label: key.label,
+          key_fingerprint: key.fingerprint, key_expires_at: key.expires_at,
+          days_until_expiry: Math.ceil((expires - now) / 86400000)
+        });
       });
-    }
-
-    return expiringSoon;
+      return result;
+    }));
+    return rows.flat();
   }
 
   /**

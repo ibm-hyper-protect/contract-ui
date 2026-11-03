@@ -21,6 +21,7 @@ import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import { useConfigStore } from './store/configStore';
 import apiClient from './services/apiClient';
+import userKeyService from './services/userKeyService';
 import { getPrimaryRole, ROLE_LABELS } from './utils/roles';
 import { ProgressBar, Theme, Modal, InlineNotification } from '@carbon/react';
 import '@carbon/charts/styles.css';
@@ -82,6 +83,7 @@ function App() {
   const [builds, setBuilds] = useState([]);
   const [selectedBuildId, setSelectedBuildId] = useState(null);
   const setupRequired = useAuthStore((state) => state.isSetupRequired());
+  const authUserId = useAuthStore(state => state.user?.id);
   const serverUrl = useConfigStore((state) => state.serverUrl);
   const hydrateConfig = useConfigStore((state) => state.hydrateConfig);
   const applyExternalConfig = useConfigStore((state) => state.applyExternalConfig);
@@ -150,6 +152,16 @@ function App() {
       apiClient.setBaseURL(serverUrl);
     }
   }, [serverUrl]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !authUserId) return;
+    const refreshKeys = () => userKeyService.refresh(authUserId).catch(error => {
+      console.error('Could not refresh device key status:', error.message);
+    });
+    refreshKeys();
+    window.addEventListener('focus', refreshKeys);
+    return () => window.removeEventListener('focus', refreshKeys);
+  }, [isAuthenticated, authUserId, serverUrl]);
 
   useEffect(() => {
     const onForcedLogout = () => {
