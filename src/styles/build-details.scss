@@ -1,0 +1,215 @@
+@use '@carbon/styles/scss/breakpoint' as breakpoint;
+@use '@carbon/styles/scss/spacing' as spacing;
+@use '@carbon/styles/scss/type' as type;
+
+.build-details {
+  min-inline-size: 0;
+
+  &__id {
+    @include type.type-style('code-01');
+    overflow-wrap: anywhere;
+  }
+}
+
+.build-details-stage {
+  margin-block-end: spacing.$spacing-07;
+  padding: spacing.$spacing-06;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-05;
+    margin-block-end: spacing.$spacing-06;
+  }
+
+  &__title {
+    @include type.type-style('heading-03');
+    margin: 0;
+  }
+
+  &__description {
+    @include type.type-style('body-01');
+    margin-block-start: spacing.$spacing-03;
+    color: var(--cds-text-secondary);
+  }
+
+  &__tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+
+    .cds--tag {
+      margin: 0;
+    }
+  }
+
+  .cds--progress {
+    inline-size: 100%;
+    margin-block-end: spacing.$spacing-06;
+  }
+
+  .cds--progress-step {
+    min-inline-size: 0;
+  }
+
+  .cds--progress-label {
+    max-inline-size: 100%;
+    white-space: normal;
+  }
+}
+
+.build-details-progress {
+  .cds--progress-line {
+    inset-block-start: 0;
+  }
+
+  .cds--progress-step-button {
+    inline-size: 100%;
+    padding-block: spacing.$spacing-05;
+    padding-inline-end: spacing.$spacing-04;
+  }
+
+  .cds--progress-step svg {
+    inline-size: spacing.$spacing-06;
+    block-size: spacing.$spacing-06;
+    margin: 0 spacing.$spacing-03 0 0;
+  }
+
+  .cds--progress-text {
+    min-inline-size: 0;
+  }
+
+  .cds--progress-label {
+    margin: 0;
+    min-block-size: spacing.$spacing-06;
+  }
+
+  .cds--progress-step--current .cds--progress-label {
+    color: var(--cds-link-primary);
+    font-weight: 600;
+  }
+
+  .cds--progress-step--incomplete {
+    .cds--progress-label {
+      color: var(--cds-text-secondary);
+    }
+
+    svg {
+      fill: var(--cds-icon-secondary);
+    }
+  }
+
+  &.cds--progress--vertical {
+    .cds--progress-step-button {
+      padding-block: 0 spacing.$spacing-06;
+      padding-inline-start: spacing.$spacing-04;
+    }
+
+    .cds--progress-line {
+      min-inline-size: 0;
+    }
+  }
+}
+
+.build-details-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: spacing.$spacing-06;
+  border-block-start: 1px solid var(--cds-border-subtle);
+  padding-block-start: spacing.$spacing-06;
+
+  > div {
+    min-inline-size: 0;
+  }
+
+  > .cds--btn {
+    flex-shrink: 0;
+  }
+
+  &__label {
+    @include type.type-style('label-01');
+    margin-block-end: spacing.$spacing-03;
+    color: var(--cds-text-secondary);
+  }
+
+  &__title {
+    @include type.type-style('heading-compact-02');
+    margin: 0;
+  }
+
+  &__description {
+    @include type.type-style('body-01');
+    margin-block-start: spacing.$spacing-03;
+    color: var(--cds-text-secondary);
+    max-inline-size: 70ch;
+  }
+
+  &--terminal {
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: spacing.$spacing-04;
+
+    > svg {
+      flex-shrink: 0;
+    }
+  }
+
+  &__warning {
+    color: var(--cds-support-warning);
+  }
+
+  &__success {
+    color: var(--cds-support-success);
+  }
+}
+
+.build-details-tab-content {
+  min-inline-size: 0;
+
+  .cds--data-table-content {
+    overflow-x: auto;
+  }
+}
+
+@include breakpoint.breakpoint-down(lg) {
+  .build-details-stage {
+    padding: spacing.$spacing-05;
+
+    .cds--progress-step {
+      min-block-size: 3rem;
+    }
+  }
+
+  .build-details-next {
+    flex-wrap: wrap;
+
+    > .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+    }
+
+    &--terminal {
+      flex-wrap: nowrap;
+    }
+  }
+
+  .build-details-tab-content .build-assignments {
+    .cds--table-toolbar,
+    .cds--toolbar-content {
+      block-size: auto;
+      min-block-size: 3rem;
+    }
+
+    .cds--table-toolbar {
+      padding-block: spacing.$spacing-03;
+    }
+
+    .cds--data-table {
+      min-inline-size: 48rem;
+    }
+  }
+}
