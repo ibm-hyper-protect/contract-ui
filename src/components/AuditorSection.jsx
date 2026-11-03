@@ -19,6 +19,9 @@ import buildService from '../services/buildService';
 import ConfirmDialog from './ConfirmDialog';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
+import { hasCertificateContent } from '../utils/submissionForm';
+
+const CERTIFICATE_PLATFORMS = PLATFORMS.filter((platform) => getCertsByPlatform(platform.id).length);
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
 const STATUS_TAG_TYPE = {
@@ -67,7 +70,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
   
   // Certificate source: 'builtin' | 'custom'
   const [certSource, setCertSource] = useState('custom');
-  const [selectedPlatformId, setSelectedPlatformId] = useState(PLATFORMS[0].id);
+  const [selectedPlatformId, setSelectedPlatformId] = useState(CERTIFICATE_PLATFORMS[0]?.id || '');
   const [selectedCertId, setSelectedCertId] = useState('');
   const [customCertContent, setCustomCertContent] = useState('');
   const [customCertFileName, setCustomCertFileName] = useState('');
@@ -236,9 +239,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
       setError('Please select or upload a valid encryption certificate.');
       return;
     }
-    // Check for placeholder/dummy certificates
-    if (certContent.includes('PASTE_') || certContent.includes('qLqL')) {
-      setError('Please upload a real encryption certificate. Built-in certificates are placeholders for demonstration.');
+    if (!hasCertificateContent(certContent)) {
+      setError('Upload a PEM encryption certificate for your runtime.');
       return;
     }
 
@@ -265,9 +267,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
       setError('Please select or upload a valid encryption certificate.');
       return;
     }
-    // Check for placeholder/dummy certificates
-    if (certContent.includes('PASTE_') || certContent.includes('qLqL')) {
-      setError('Please upload a real encryption certificate. Built-in certificates are placeholders for demonstration.');
+    if (!hasCertificateContent(certContent)) {
+      setError('Upload a PEM encryption certificate for your runtime.');
       return;
     }
 
@@ -402,7 +403,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
             
             <div style={{ marginTop: '1rem' }}>
               <h5 className="workflow-step-title" style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                HPCR Encryption Certificate
+                Runtime encryption certificate
               </h5>
               <p style={{ fontSize: '0.875rem', color: '#525252', marginBottom: '0.75rem' }}>
                 The attestation public key will be encrypted using this certificate before storage.
@@ -425,9 +426,14 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
                   labelText="Use built-in certificate"
                   value="builtin"
                   id="attestation-cert-builtin"
-                  disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
+                  disabled={!CERTIFICATE_PLATFORMS.length || registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
                 />
               </RadioButtonGroup>
+              {!CERTIFICATE_PLATFORMS.length && (
+                <p className="workflow-step-copy">
+                  Built-in certificates are unavailable. Upload the encryption certificate for your runtime.
+                </p>
+              )}
 
               {certSource === 'builtin' ? (
                 <div className="workflow-form-row" style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -439,7 +445,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
                     className="workflow-select workflow-select--platform"
                     disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
                   >
-                    {PLATFORMS.map(p => (
+                    {CERTIFICATE_PLATFORMS.map(p => (
                       <SelectItem key={p.id} value={p.id} text={p.label} />
                     ))}
                   </Select>

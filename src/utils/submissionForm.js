@@ -1,3 +1,4 @@
+import { prepareContractInput } from './contractInput.js';
 import { FILE_SIZE_LIMITS } from './constants.js';
 
 export function validateSubmissionFile(file, kind) {
@@ -14,14 +15,19 @@ export function validateSubmissionFile(file, kind) {
   return '';
 }
 
-export function validateSubmissionYaml(content) {
+export function validateSubmissionYaml(content, section = 'workload') {
   if (!content.trim()) return 'Add YAML content before continuing.';
   if (new TextEncoder().encode(content).byteLength > FILE_SIZE_LIMITS.WORKLOAD)
     return 'YAML content must be 50 MB or smaller.';
+  try {
+    prepareContractInput(content, section);
+  } catch (error) {
+    return error.message;
+  }
   return '';
 }
 
-// Check PEM framing only. Certificate validity and YAML schema are checked by the backend.
+// Check PEM framing only. Certificate validity and the contract schema are checked by the backend before submission.
 export function hasCertificateContent(content) {
   return (
     typeof content === 'string' &&

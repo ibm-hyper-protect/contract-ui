@@ -71,7 +71,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
   const title = isUploadMode ? 'Upload Attestation Records' : 'Verify Attestation Records';
   const description = isUploadMode
     ? 'Data Owner or Environment Operator can upload attestation records and signature files after contract download.'
-    : 'Auditor verification uses backend HpcrGetAttestationRecords() and HpcrVerifySignatureAttestationRecords().';
+    : 'The backend decrypts the evidence and verifies its signature using the runtime attestation certificate.';
 
   const buildStatusUpper = String(liveBuildStatus || '').toUpperCase();
   const attestationState = String(
