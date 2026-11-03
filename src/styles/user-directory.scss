@@ -1,0 +1,189 @@
+@use '@carbon/styles/scss/breakpoint' as breakpoint;
+@use '@carbon/styles/scss/spacing' as spacing;
+@use '@carbon/styles/scss/type' as type;
+
+.user-management-page,
+.user-directory {
+  min-inline-size: 0;
+}
+
+.user-directory {
+  padding: 0;
+
+  .cds--data-table-container { padding-block-start: 0; }
+
+  .cds--table-toolbar,
+  .cds--toolbar-content {
+    block-size: auto;
+    min-block-size: spacing.$spacing-09;
+  }
+
+  .cds--toolbar-content { align-items: center; }
+
+  .cds--toolbar-search-container-persistent { min-inline-size: 12rem; }
+
+  .cds--pagination { border-block-start: 1px solid var(--cds-border-subtle); }
+}
+
+.user-directory__header {
+  padding: spacing.$spacing-06 spacing.$spacing-05;
+
+  p {
+    @include type.type-style('body-01');
+    margin: spacing.$spacing-03 0 0;
+    color: var(--cds-text-secondary);
+  }
+}
+
+.user-directory__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-04;
+
+  h2 {
+    @include type.type-style('heading-03');
+    margin: 0;
+  }
+}
+
+.user-directory__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-02;
+}
+
+.user-directory__filter {
+  flex-shrink: 0;
+  padding-inline: spacing.$spacing-05;
+
+  .cds--select-input { background-color: transparent; }
+}
+
+.user-directory__results {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-block-size: spacing.$spacing-08;
+  gap: spacing.$spacing-03;
+  padding-inline: spacing.$spacing-05;
+  border-block-start: 1px solid var(--cds-border-subtle);
+
+  p {
+    @include type.type-style('label-01');
+    margin: 0;
+    color: var(--cds-text-secondary);
+  }
+}
+
+.user-directory__scroll {
+  overflow-x: auto;
+
+  .cds--data-table {
+    min-inline-size: 64rem;
+    table-layout: fixed;
+  }
+
+  th:nth-child(1) { inline-size: 26%; }
+  th:nth-child(2) { inline-size: 19%; }
+  th:nth-child(3) { inline-size: 10%; }
+  th:nth-child(4) { inline-size: 18%; }
+  th:nth-child(5) { inline-size: 15%; }
+  th:nth-child(6) { inline-size: 12%; }
+
+  td { overflow-wrap: anywhere; }
+
+  .user-management-action-cell {
+    min-inline-size: 0;
+    justify-content: flex-start;
+
+    > .cds--btn {
+      min-inline-size: 0;
+      padding-inline: spacing.$spacing-04;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.user-directory__identity,
+.user-directory__credential {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: spacing.$spacing-01;
+}
+
+.user-directory__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+.user-directory__secondary {
+  @include type.type-style('label-01');
+  color: var(--cds-text-secondary);
+}
+
+.user-directory__roles {
+  display: flex;
+  align-items: center;
+  gap: spacing.$spacing-03;
+
+  > .cds--tag {
+    min-inline-size: 0;
+    margin: 0;
+  }
+
+  > .cds--toggletip { flex-shrink: 0; }
+}
+
+.user-directory__role-count {
+  @include type.type-style('label-01');
+  justify-content: center;
+  min-inline-size: spacing.$spacing-06;
+  min-block-size: spacing.$spacing-06;
+  color: var(--cds-link-primary);
+
+  &:hover { text-decoration: underline; }
+}
+
+.user-directory__role-list {
+  display: grid;
+  gap: spacing.$spacing-03;
+  padding-inline-start: spacing.$spacing-05;
+  list-style: disc;
+}
+
+.user-directory__empty { border-block-start: 1px solid var(--cds-border-subtle); }
+
+.user-management-page__refresh-error {
+  margin-block-end: spacing.$spacing-05;
+
+  .cds--inline-notification {
+    max-inline-size: none;
+    margin: 0;
+  }
+}
+
+@include breakpoint.breakpoint-down(lg) {
+  .user-directory {
+    .cds--toolbar-content { flex-wrap: wrap; }
+
+    .cds--toolbar-search-container-persistent {
+      flex-basis: 100%;
+      inline-size: 100%;
+    }
+  }
+
+  .user-directory__filter {
+    flex: 1 1 auto;
+    min-block-size: spacing.$spacing-09;
+    align-content: center;
+  }
+}
