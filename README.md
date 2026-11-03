@@ -80,6 +80,12 @@ This command:
 2. Waits for the server to be ready
 3. Launches Electron in development mode
 
+### Command Palette
+
+Open the command palette with **Ctrl+K** (**Cmd+K** on macOS) when focus is outside a text input. Use search, the arrow keys and Enter to run a command; Escape dismisses it.
+
+Build and user creation commands open the existing forms without submitting them. Build commands are available in Build Management; CSV export uses selected rows in the active-build table and prompts for a selection when needed. Commands follow the active role and page context. Documentation opens this README, and Contact Support opens the project's issue forms in the system browser.
+
 ### Start Vite Only
 To run only the Vite development server:
 ```bash

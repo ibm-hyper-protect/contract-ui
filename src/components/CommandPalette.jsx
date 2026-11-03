@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { Modal, Search, Tag } from '@carbon/react';
 import {
   Home,
@@ -33,14 +33,20 @@ const CommandPalette = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentActions, setRecentActions] = useState([]);
-  const searchInputRef = useRef(null);
+  const pendingAction = useRef(null);
+  const launcherRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (open) launcherRef.current = document.activeElement;
+  }, [open]);
 
   // Load recent actions from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('recent_actions');
     if (stored) {
       try {
-        setRecentActions(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setRecentActions(Array.isArray(parsed) ? [...new Set(parsed.filter(id => typeof id === 'string'))] : []);
       } catch (e) {
         setRecentActions([]);
       }
@@ -57,7 +63,7 @@ const CommandPalette = ({
         category: 'Navigation',
         icon: Home,
         keywords: ['home', 'dashboard', 'main'],
-        action: () => onAction('navigate', '/'),
+        action: () => onAction('navigate', 'HOME'),
       },
       {
         id: 'nav-builds',
@@ -125,7 +131,7 @@ const CommandPalette = ({
       },
       {
         id: 'build-export',
-        label: 'Export Builds to CSV',
+        label: 'Export Selected Builds to CSV',
         category: 'Build Actions',
         icon: Download,
         keywords: ['export', 'download', 'csv'],
@@ -228,18 +234,6 @@ const CommandPalette = ({
     });
   }, [allActions, searchTerm]);
 
-  // Group actions by category
-  const groupedActions = useMemo(() => {
-    const groups = {};
-    filteredActions.forEach(action => {
-      if (!groups[action.category]) {
-        groups[action.category] = [];
-      }
-      groups[action.category].push(action);
-    });
-    return groups;
-  }, [filteredActions]);
-
   // Get recent actions
   const recentActionItems = useMemo(() => {
     return recentActions
@@ -247,6 +241,15 @@ const CommandPalette = ({
       .filter(Boolean)
       .slice(0, 5);
   }, [recentActions, allActions]);
+
+  const visibleRecentActions = searchTerm.trim() ? [] : recentActionItems;
+  const remainingActions = filteredActions.filter(action => !visibleRecentActions.some(recent => recent.id === action.id));
+  const displayedActions = [...visibleRecentActions, ...remainingActions];
+  const activeIndex = Math.min(selectedIndex, Math.max(0, displayedActions.length - 1));
+  const groupedActions = remainingActions.reduce((groups, action) => {
+    (groups[action.category] ||= []).push(action);
+    return groups;
+  }, {});
 
   // Add action to recent
   const addToRecent = useCallback((actionId) => {
@@ -259,8 +262,9 @@ const CommandPalette = ({
 
   // Execute action
   const executeAction = useCallback((action) => {
+    if (pendingAction.current) return;
+    pendingAction.current = action.id;
     addToRecent(action.id);
-    action.action();
     onClose();
     setSearchTerm('');
     setSelectedIndex(0);
@@ -271,25 +275,28 @@ const CommandPalette = ({
     if (!open) return;
 
     const handleKeyDown = (e) => {
-      const totalActions = filteredActions.length;
+      const totalActions = displayedActions.length;
 
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex(prev => Math.min(prev + 1, totalActions - 1));
+          setSelectedIndex(prev => Math.max(0, Math.min(prev + 1, totalActions - 1)));
           break;
         case 'ArrowUp':
           e.preventDefault();
           setSelectedIndex(prev => Math.max(prev - 1, 0));
           break;
         case 'Enter':
+          // Focused buttons keep their native Enter behavior.
+          if (!e.target.closest?.('.command-palette__search')) return;
           e.preventDefault();
-          if (filteredActions[selectedIndex]) {
-            executeAction(filteredActions[selectedIndex]);
+          if (displayedActions[activeIndex]) {
+            executeAction(displayedActions[activeIndex]);
           }
           break;
         case 'Escape':
           e.preventDefault();
+          e.stopPropagation();
           onClose();
           setSearchTerm('');
           setSelectedIndex(0);
@@ -297,18 +304,19 @@ const CommandPalette = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, filteredActions, selectedIndex, executeAction, onClose]);
+    // Carbon Search consumes Escape; capture it so the palette can dismiss.
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [open, displayedActions, activeIndex, executeAction, onClose]);
 
-  // Focus search input when opened
+  // Let the palette close and restore focus before opening another dialog.
   useEffect(() => {
-    if (open && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [open]);
+    if (open || !pendingAction.current) return;
+    const action = allActions.find(item => item.id === pendingAction.current);
+    pendingAction.current = null;
+    if (launcherRef.current?.isConnected) launcherRef.current.focus();
+    action?.action();
+  }, [open, allActions]);
 
   // Reset state when closed
   useEffect(() => {
@@ -323,13 +331,15 @@ const CommandPalette = ({
       open={open}
       onRequestClose={onClose}
       passiveModal
+      aria-label="Command palette"
+      launcherButtonRef={pendingAction.current ? undefined : launcherRef}
       className="command-palette"
       size="md"
     >
       <div className="command-palette__container">
         <div className="command-palette__search">
           <Search
-            ref={searchInputRef}
+            data-modal-primary-focus
             placeholder="Type a command or search..."
             value={searchTerm}
             onChange={(e) => {
@@ -337,21 +347,21 @@ const CommandPalette = ({
               setSelectedIndex(0);
             }}
             size="lg"
-            labelText=""
+            labelText="Search commands"
             closeButtonLabelText="Clear search"
           />
         </div>
 
         <div className="command-palette__results">
-          {!searchTerm && recentActionItems.length > 0 && (
+          {visibleRecentActions.length > 0 && (
             <div className="command-palette__section">
               <h4 className="command-palette__section-title">Recent</h4>
               <div className="command-palette__items">
-                {recentActionItems.map((action, index) => (
+                {visibleRecentActions.map((action, index) => (
                   <CommandPaletteItem
                     key={action.id}
                     action={action}
-                    isSelected={selectedIndex === index}
+                    isSelected={activeIndex === index}
                     onClick={() => executeAction(action)}
                   />
                 ))}
@@ -363,13 +373,13 @@ const CommandPalette = ({
             <div key={category} className="command-palette__section">
               <h4 className="command-palette__section-title">{category}</h4>
               <div className="command-palette__items">
-                {actions.map((action, index) => {
-                  const globalIndex = filteredActions.indexOf(action);
+                {actions.map((action) => {
+                  const globalIndex = displayedActions.indexOf(action);
                   return (
                     <CommandPaletteItem
                       key={action.id}
                       action={action}
-                      isSelected={selectedIndex === globalIndex}
+                      isSelected={activeIndex === globalIndex}
                       onClick={() => executeAction(action)}
                     />
                   );
@@ -406,6 +416,7 @@ const CommandPaletteItem = ({ action, isSelected, onClick }) => {
   return (
     <button
       className={`command-palette__item ${isSelected ? 'command-palette__item--selected' : ''}`}
+      aria-label={action.label}
       onClick={onClick}
       type="button"
     >

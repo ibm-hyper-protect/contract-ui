@@ -1,6 +1,7 @@
 import '../styles/user-directory.scss';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PageHeader from '../components/PageHeader';
+import { usePageCommand } from '../hooks/usePageCommand';
 import {
   Button,
   Modal,
@@ -515,6 +516,10 @@ const UserManagement = () => {
     }
   };
 
+  usePageCommand(type => {
+    if (type === 'createUser') handleCreateClick();
+  }, !loading);
+
   const isCreateFormValid = () => {
     const nameValid = validateUserName(formData.name).valid;
     const emailValid = validateEmail(formData.email).valid;
@@ -635,6 +640,7 @@ const UserManagement = () => {
         <Stack gap={6}>
           <TextInput
             id="user-name"
+            data-modal-primary-focus
             labelText="Full Name"
             placeholder="John Doe"
             value={formData.name}

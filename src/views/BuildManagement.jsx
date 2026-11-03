@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
+import { usePageCommand } from '../hooks/usePageCommand';
 import {
   DataTable,
   Table,
@@ -315,11 +316,11 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
       const csvContent = [
         headers.join(','),
         ...selectedBuilds.map(build => [
-          `"${build.name}"`,
-          `"${(build.status || '').toUpperCase()}"`,
-          `"${build.created_by || build.createdBy || 'Admin'}"`,
-          `"${formatDate(build.created_at || build.createdAt)}"`
-        ].join(','))
+          build.name,
+          (build.status || '').toUpperCase(),
+          build.created_by || build.createdBy || 'Admin',
+          formatDate(build.created_at || build.createdAt)
+        ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
       ].join('\n');
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -331,6 +332,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       setNotification({
         kind: 'success',
@@ -670,6 +672,26 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
     link.click();
   }, []);
 
+  usePageCommand(type => {
+    if (type === 'createBuild' && canManageBuilds && !isSetupRequired && !creating) {
+      setCreateModalOpen(true);
+    } else if (type === 'toggleFilters') {
+      if (builds.length) setShowFilters(previous => !previous);
+      else setNotification({
+        kind: 'info',
+        title: 'No builds to filter',
+        subtitle: 'Build filters are available once there are builds to display.'
+      });
+    } else if (type === 'exportBuilds' && !bulkExportInProgress) {
+      if (selectedBuildIds.length) handleBulkExport();
+      else setNotification({
+        kind: 'info',
+        title: 'Select builds to export',
+        subtitle: 'Select one or more rows in the active-build table, then run Export Selected Builds to CSV.'
+      });
+    }
+  });
+
   const handleSort = useCallback((headerKey) => {
     setSortInfo(prev => ({
       columnKey: headerKey,
@@ -783,11 +805,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                 const visibleBuildIds = rows.map((row) => row.buildId ?? row.id);
                 const selectedVisibleBuildIds = visibleBuildIds.filter((buildId) => selectedBuildIds.includes(buildId));
                 const selectedBuildsInfo = getSelectedBuildsInfo(selectedVisibleBuildIds);
-                const batchActionProps = getBatchActionProps({
-                  totalSelected: selectedVisibleBuildIds.length,
-                  shouldShowBatchActions: selectedVisibleBuildIds.length > 0,
-                  onCancel: () => setSelectedBuildIds([])
-                });
+                const batchActionProps = getBatchActionProps();
                 const allVisibleRowsSelected = rows.length > 0 && selectedVisibleBuildIds.length === rows.length;
                 
                 return (
@@ -799,6 +817,8 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                     <TableToolbar>
                       <TableBatchActions
                         {...batchActionProps}
+                        totalSelected={selectedVisibleBuildIds.length}
+                        shouldShowBatchActions={selectedVisibleBuildIds.length > 0}
                         onCancel={() => setSelectedBuildIds([])}
                       >
                         <TableBatchAction
@@ -949,18 +969,18 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                       <TableHead>
                         <TableRow>
                           <TableSelectAll
-                            {...getSelectionProps({
-                              checked: allVisibleRowsSelected,
-                              indeterminate: selectedVisibleBuildIds.length > 0 && !allVisibleRowsSelected,
-                              onSelect: () => {
-                                setSelectedBuildIds((previous) => {
-                                  if (allVisibleRowsSelected) {
-                                    return previous.filter((id) => !visibleBuildIds.includes(id));
-                                  }
-                                  return Array.from(new Set([...previous, ...visibleBuildIds]));
-                                });
-                              }
-                            })}
+                            {...getSelectionProps()}
+                            checked={allVisibleRowsSelected}
+                            indeterminate={selectedVisibleBuildIds.length > 0 && !allVisibleRowsSelected}
+                            aria-label={allVisibleRowsSelected ? 'Deselect all rows' : 'Select all rows'}
+                            onSelect={() => {
+                              setSelectedBuildIds((previous) => {
+                                if (allVisibleRowsSelected) {
+                                  return previous.filter((id) => !visibleBuildIds.includes(id));
+                                }
+                                return Array.from(new Set([...previous, ...visibleBuildIds]));
+                              });
+                            }}
                           />
                           {headers.map((header) => {
                             const { key, ...headerProps } = getHeaderProps({ header });
@@ -986,18 +1006,17 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                           return (
                             <TableRow key={row.id} {...rowProps}>
                               <TableSelectRow
-                                {...getSelectionProps({
-                                  row,
-                                  checked: selectedBuildIds.includes(row.buildId ?? row.id),
-                                  onSelect: () => {
-                                    const buildId = row.buildId ?? row.id;
-                                    setSelectedBuildIds((previous) => (
-                                      previous.includes(buildId)
-                                        ? previous.filter((id) => id !== buildId)
-                                        : [...previous, buildId]
-                                    ));
-                                  }
-                                })}
+                                {...getSelectionProps({ row })}
+                                checked={selectedBuildIds.includes(row.buildId ?? row.id)}
+                                aria-label={selectedBuildIds.includes(row.buildId ?? row.id) ? 'Deselect row' : 'Select row'}
+                                onSelect={() => {
+                                  const buildId = row.buildId ?? row.id;
+                                  setSelectedBuildIds((previous) => (
+                                    previous.includes(buildId)
+                                      ? previous.filter((id) => id !== buildId)
+                                      : [...previous, buildId]
+                                  ));
+                                }}
                               />
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>{cell.value}</TableCell>
@@ -1220,6 +1239,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
         <Stack gap={6}>
           <TextInput
             id="build-name"
+            data-modal-primary-focus
             labelText="Build Name *"
             placeholder="e.g., prod-v2.1, staging-test"
             value={buildName}
