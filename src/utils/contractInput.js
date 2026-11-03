@@ -19,8 +19,14 @@ import { loadAll, dump, JSON_SCHEMA } from 'js-yaml';
 
 const mapping = (value) => value && typeof value === 'object' && !Array.isArray(value);
 
-// Podman play accepts Pod and ConfigMap documents. Keep the document order when
-// wrapping an uploaded multi-document manifest into a contract workload.
+/**
+ * Prepare a raw section or complete contract for backend schema validation.
+ * Pod/ConfigMap documents become workload play resources in their original order.
+ * @param {string} content - YAML input from the editor or uploaded file.
+ * @param {'workload'|'env'} section - Section accepted by the current persona.
+ * @returns {string} Original contract YAML or normalized Podman workload YAML.
+ * @throws {Error} When YAML is malformed or does not match a supported input form.
+ */
 export function prepareContractInput(content, section) {
   const documents = loadAll(content, undefined, { schema: JSON_SCHEMA });
   if (!documents.length || documents.some((value) => !mapping(value))) {
