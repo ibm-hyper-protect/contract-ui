@@ -1,0 +1,165 @@
+@use '@carbon/styles/scss/breakpoint' as breakpoint;
+@use '@carbon/styles/scss/spacing' as spacing;
+@use '@carbon/styles/scss/type' as type;
+
+// The legacy Build Details grid only specifies a large-screen column span.
+// Keep submission forms full width at every breakpoint when embedded in it.
+.build-details-tab-content .cds--css-grid-column:has(> .submission-form) {
+  grid-column: 1 / -1;
+}
+
+.submission-form {
+  min-width: 0;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: spacing.$spacing-05;
+    margin-bottom: spacing.$spacing-06;
+    h2 {
+      @include type.type-style('heading-03');
+      margin-bottom: spacing.$spacing-03;
+    }
+    p {
+      @include type.type-style('body-01');
+      color: var(--cds-text-secondary);
+      max-width: 65ch;
+    }
+  }
+  &__layout {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+    gap: spacing.$spacing-06;
+    align-items: start;
+  }
+  &__inputs {
+    display: grid;
+    gap: spacing.$spacing-06;
+    min-width: 0;
+  }
+  .submission-form__step,
+  .submission-form__complete {
+    min-width: 0;
+    padding: spacing.$spacing-06;
+    h3 {
+      @include type.type-style('heading-compact-02');
+      margin-bottom: spacing.$spacing-04;
+    }
+  }
+  &__eyebrow {
+    @include type.type-style('label-01');
+    color: var(--cds-text-secondary);
+    margin-bottom: spacing.$spacing-03;
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+    margin-top: spacing.$spacing-03;
+  }
+  &__certificate {
+    margin-top: spacing.$spacing-05;
+  }
+  &__selects {
+    display: grid;
+    gap: spacing.$spacing-05;
+  }
+  &__readiness {
+    @include type.type-style('body-01');
+    margin: spacing.$spacing-06 0;
+  }
+  &__meta {
+    @include type.type-style('label-01');
+    color: var(--cds-text-secondary);
+    margin: spacing.$spacing-05 0 spacing.$spacing-03;
+  }
+  &__notice {
+    margin-bottom: spacing.$spacing-06;
+  }
+  &__complete-icon {
+    color: var(--cds-support-success);
+    margin-bottom: spacing.$spacing-04;
+  }
+  &__complete > p {
+    @include type.type-style('body-01');
+  }
+  &__review > .cds--btn {
+    width: 100%;
+    max-width: none;
+  }
+  .cds--file-browse-btn {
+    width: 100%;
+    max-width: none;
+  }
+  .cds--file__selected-file {
+    max-width: 100%;
+    margin-top: spacing.$spacing-04;
+  }
+  .cds--file-filename {
+    overflow-wrap: anywhere;
+  }
+  .cds--inline-notification {
+    max-width: 100%;
+    margin: spacing.$spacing-05 0;
+  }
+  .cds--snippet {
+    max-width: 100%;
+  }
+}
+.submission-form__help {
+  @include type.type-style('body-01');
+  color: var(--cds-text-secondary);
+  margin-bottom: spacing.$spacing-05;
+}
+.submission-form__preview-title {
+  @include type.type-style('heading-compact-01');
+  margin: spacing.$spacing-06 0 spacing.$spacing-04;
+}
+.submission-summary {
+  margin-top: spacing.$spacing-05;
+  > div {
+    padding: spacing.$spacing-04 0;
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+  dt {
+    @include type.type-style('label-01');
+    color: var(--cds-text-secondary);
+    margin-bottom: spacing.$spacing-02;
+  }
+  dd {
+    @include type.type-style('body-01');
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+.submission-modal {
+  .cds--text-area {
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 18rem;
+  }
+  .cds--snippet {
+    width: 100%;
+    max-width: 100%;
+  }
+  .cds--inline-notification {
+    max-width: 100%;
+    margin-bottom: spacing.$spacing-05;
+  }
+}
+@include breakpoint.breakpoint-down(lg) {
+  .submission-form__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@include breakpoint.breakpoint-down(md) {
+  .submission-form .submission-form__step,
+  .submission-form .submission-form__complete {
+    padding: spacing.$spacing-05;
+  }
+}
