@@ -1,0 +1,41 @@
+/*
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+@use '@carbon/styles/scss/spacing' as spacing;
+@use '@carbon/styles/scss/type' as type;
+
+.runtime-certificate-select {
+  display: grid;
+  gap: spacing.$spacing-05;
+  min-width: 0;
+  margin-top: spacing.$spacing-05;
+
+  &__metadata {
+    display: grid;
+    gap: spacing.$spacing-02;
+    color: var(--cds-text-secondary);
+
+    p {
+      @include type.type-style('label-01');
+      margin: 0;
+    }
+
+    code {
+      overflow-wrap: anywhere;
+    }
+  }
+}
