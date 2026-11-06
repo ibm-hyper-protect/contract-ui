@@ -51,8 +51,8 @@
     "wait-on": "^9.5.1"
   },
   "dependencies": {
-    "@carbon/charts": "^1.27.25",
-    "@carbon/charts-react": "^1.27.25",
+    "@carbon/charts": "^1.27.27",
+    "@carbon/charts-react": "^1.27.27",
     "@carbon/icons-react": "^11.92.0",
     "@carbon/react": "^1.120.0",
     "axios": "^1.21.0",
@@ -60,7 +60,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",
-    "sass": "^1.107.1",
+    "sass": "^1.108.0",
     "zustand": "^5.0.16"
   },
   "allowScripts": {
