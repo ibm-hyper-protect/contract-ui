@@ -279,6 +279,21 @@ Configuration is defined in `vite.config.js`:
 - View public contracts
 - No modification permissions
 
+## Single Sign-On (IBM w3id)
+
+The login screen offers an additional **W3-SIGN-IN** button next to the email and password login.
+
+1. The app starts a short-lived HTTP listener on port `38917` in the Electron main process, bound to the local loopback interface (`127.0.0.1`, reachable as `localhost`) so it is not reachable from the network, and creates a random `state` value (kept in main-process memory only).
+2. The renderer requests the w3id login URL from the backend (`GET /auth/oidc/login?state=...`) and opens it in the system browser.
+3. After the w3id login, the browser is redirected to `http://localhost:38917/auth/callback?code=...&state=...`.
+4. The listener compares the returned `state` in constant time. On a mismatch or a missing `state` the login is aborted and nothing is sent to the backend. Otherwise the `code` is exchanged via `POST /auth/oidc/callback`.
+5. The listener accepts only one callback, then closes. It also closes after 5 minutes.
+
+Requirements:
+- `http://localhost:38917/auth/callback` must be configured as redirect URI in the backend (`APPID_REDIRECT_URI`) and registered with w3id.
+- Port `38917` must be free on the machine. Ports from 49152 upwards are avoided because the OS and VPN clients use them.
+- The user account must exist and be active in the backend. If the backend rejects the login (HTTP 403), its error message is shown; if it sends none, "Your account is not registered or has been deactivated." is shown.
+
 ## Security Considerations
 
 ### Cryptographic Operations

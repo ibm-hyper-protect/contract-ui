@@ -24,6 +24,7 @@ import apiClient from './services/apiClient';
 import { getPrimaryRole, ROLE_LABELS } from './utils/roles';
 import { ProgressBar, Theme, Modal, InlineNotification } from '@carbon/react';
 import '@carbon/charts/styles.css';
+import authService from './services/authService';
 
 const ROLE_PERSONA_MAP = {
   'ADMIN': PERSONAS.ADMIN,
@@ -76,6 +77,7 @@ function App() {
   const [userRole, setUserRole] = useState('ADMIN');
   const [userRoles, setUserRoles] = useState(['ADMIN']);
   const [userEmail, setUserEmail] = useState('');
+  const [oidcError, setOidcError] = useState(null);
 
   const [activePersona, setActivePersona] = useState(PERSONAS.ADMIN);
   const [activeNav, setActiveNav] = useState('HOME'); // Default to home for all users
@@ -260,7 +262,27 @@ function App() {
     if (isFreshLogin) setShowWelcomeModal(true);
   }, [applyStoredAuthState]);
 
+  useEffect(() => {
+    if (!window.electron?.auth?.onOidcCallback) return
+
+    return window.electron.auth.onOidcCallback(async ({ code, error }) => {
+      if (error) {
+        setOidcError({ message: error })
+        return
+      }
+      try {
+        await authService.handleOidcCallback(code)
+        handleLogin(true)
+      } catch (err) {
+        setOidcError({ message: err.message || 'Login with IBM w3id failed.' })
+      }
+    })
+  }, [handleLogin])
+
   const handleLogout = useCallback(() => {
+    useAuthStore.getState().clearAuth();
+    apiClient.clearAuthToken();
+
     // Clear all storage
     localStorage.clear();
     sessionStorage.clear();
@@ -453,7 +475,7 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} oidcError={oidcError} />;
   }
 
   return (

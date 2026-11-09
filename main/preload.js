@@ -58,7 +58,15 @@ contextBridge.exposeInMainWorld('electron', {
     hasPrivateKey: (userId) =>
       ipcRenderer.invoke('crypto:hasPrivateKey', userId)
   },
-  
+  auth: {
+    startOidcServer: () => ipcRenderer.invoke('auth:startOidcServer'),
+    onOidcCallback: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('oidc:callback', listener);
+      return () => ipcRenderer.removeListener('oidc:callback', listener);
+    }
+  },
+
   // contract-cli operations
   contractCli: {
     encryptSection: (plainText, certContent) =>
