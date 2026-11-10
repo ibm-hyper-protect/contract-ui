@@ -61,3 +61,17 @@ refresh retains content, forms prevent duplicate submission, switching Carbon
 themes changes the illustrations, and reduced motion gives a static image.
 File-reading indicators can be brief with small local files. Run `npm run build`
 to verify the application and its asset imports.
+
+## Command palette
+
+The palette uses Carbon's modal and search components with compact command rows,
+group labels and a current-page marker. Its stylesheet is imported at the root
+of `src/index.scss`; it must not be nested inside the keyboard-help styles or a
+reduced-motion query. That nesting previously left the palette's command buttons
+unstyled under normal motion settings.
+
+Open it with Ctrl+K or Command+K. Search retains focus while Arrow Up/Down changes
+the active option and scrolls it into view; Enter runs the selected command.
+Escape closes the palette and restores launcher focus. Recent commands are
+deduplicated, and existing role and page restrictions still apply. Check both
+Carbon themes and normal/reduced motion, including a search with no results.
