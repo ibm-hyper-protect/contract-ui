@@ -1,9 +1,9 @@
 import '../styles/system-logs.scss';
-import LoadingState from '../components/LoadingState';
 import React, { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Button,
   DataTable,
+  DataTableSkeleton,
   InlineNotification,
   Pagination,
   Select,
@@ -179,7 +179,9 @@ const SystemLogs = () => {
         )}
       />
       {isLoading ? (
-        <LoadingState variant="event-stream" description="Loading system logs…" size="page" />
+        <div role="status" aria-label="Loading system logs">
+          <DataTableSkeleton rowCount={10} columnCount={6} showHeader={false} showToolbar />
+        </div>
       ) : error && !hasLoaded ? (
         <ErrorStatePanel
           title="Unable to load system logs"

@@ -1,15 +1,17 @@
 # Loading states
 
 `src/components/LoadingState.jsx` renders an operation-specific SVG with a visible
-status message. Use `size="page"` for an initial page fetch, the default section
-size for longer operations, and `size="inline"` beside existing forms or content.
+status message. Keep Carbon table skeletons for initial tabular-data fetches,
+including Build Management, User Management and System Logs. Use `size="page"`
+for non-tabular initial page fetches, the default section size for longer
+operations, and `size="inline"` beside existing forms or content.
 
 ```jsx
 {loading && (
   <LoadingState
-    variant="table-scan"
-    description="Loading users…"
-    size="page"
+    variant="archive-pack"
+    description="Loading YAML template…"
+    size="inline"
   />
 )}
 ```
@@ -18,14 +20,14 @@ size for longer operations, and `size="inline"` beside existing forms or content
 | --- | --- |
 | `connection` | Application configuration hydration and signing in |
 | `analytics` | Initial analytics and Home overview fetches |
-| `event-stream` | Audit trail and system log fetches |
+| `event-stream` | Audit trail fetches |
 | `contract-assembly` | Section submission, finalisation, contract loading and saving |
 | `key-material` | Build key status, passwords and contract integrity |
 | `layer-stack` | Workload/environment context and finalisation prerequisites |
 | `archive-pack` | Loading YAML templates and uploading attestation evidence |
-| `table-scan` | Initial user directory fetch and build assignee lookup |
+| `table-scan` | Build assignee lookup in the create-build form |
 | `signature-trace` | Build signing key registration and attestation verification |
-| `task-routing` | Initial build list, assignment context and confirmation actions |
+| `task-routing` | Assignment context and confirmation actions |
 
 All ten assets are local SVG/CSS files with transparent backgrounds and no
 scripts, remote resources, runtime dependencies or application data. The component
@@ -49,7 +51,8 @@ change compatible with the separate device-key management rework.
 The startup animation lasts until configuration hydration completes, including
 the existing fallback on read failure. The former random progress percentage and
 artificial startup delay have been removed. Build Management now receives the
-initial build-fetch state; background refreshes retain existing content.
+initial build-fetch state and displays its table skeleton; background refreshes
+retain existing content.
 
 To review, delay requests in the browser's Network tools and visit Analytics,
 User Management, System Logs, Build Management, Account Settings and each build

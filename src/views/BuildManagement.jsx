@@ -39,6 +39,7 @@ import userService from '../services/userService';
 import buildService from '../services/buildService';
 import assignmentService from '../services/assignmentService';
 import LoadingState from '../components/LoadingState';
+import { DataTableSkeletonLoader } from '../components/LoadingSpinner';
 import { useAuthStore } from '../store/authStore';
 import { StatePanel } from '../components/StatePanel';
 import FilterPresetManager from '../components/FilterPresetManager';
@@ -752,8 +753,13 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
       )}
 
       {loading ? (
-        <div className="build-management-loading">
-          <LoadingState variant="task-routing" description="Loading builds…" size="page" />
+        <div className="build-management-loading" role="status" aria-label="Loading builds">
+          <DataTableSkeletonLoader
+            rows={5}
+            columns={5}
+            showHeader={true}
+            showToolbar={true}
+          />
         </div>
       ) : builds.length === 0 ? (
         <StatePanel
