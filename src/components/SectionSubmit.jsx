@@ -28,6 +28,7 @@ import {
   validateSubmissionYaml,
 } from '../utils/submissionForm';
 import AuditorSection from './AuditorSection';
+import BuildCertificateReuse from './BuildCertificateReuse';
 
 const ROLE_CONFIG = {
   SOLUTION_PROVIDER: {
@@ -482,6 +483,10 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                     hideCloseButton
                   />
                 )}
+                <BuildCertificateReuse
+                  buildId={buildId} content={activeCertificate} name={certificateName} disabled={disabled}
+                  onSelect={(value) => { setCertSource('custom'); setCertificate(value); setCertificateError(''); }}
+                />
                 {reading && <InlineLoading description="Reading file…" />}
               </Tile>
             </div>

@@ -288,6 +288,8 @@ Configuration is defined in `vite.config.js`:
 - AES-256 for symmetric encryption
 
 ### Key Storage
+
+Public runtime certificates can be explicitly remembered for the same build on this device during the current session. [Certificate reuse](docs/certificate-reuse.md).
 - Keys are stored securely using OS-level key storage mechanisms
 - Support for key rotation and credential management
 - Password-protected key export

@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('electron', {
   
   // Crypto operations
   crypto: {
+    inspectRuntimeCertificate: (pem) => ipcRenderer.invoke('crypto:inspectRuntimeCertificate', pem),
+
     generateIdentityKeyPair: () =>
       ipcRenderer.invoke('crypto:generateIdentityKeyPair'),
     

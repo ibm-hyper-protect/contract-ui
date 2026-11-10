@@ -8,6 +8,7 @@ const encryptor = require('./crypto/encryptor');
 const signer = require('./crypto/signer');
 const keyStorage = require('./crypto/keyStorage');
 const contractCli = require('./crypto/contractCli');
+const { inspectRuntimeCertificate } = require('./crypto/runtimeCertificate');
 
 const TOOL_INFO_TIMEOUT_MS = 5000;
 const APP_ID = 'com.ibm.ccrt.contract-builder';
@@ -383,6 +384,8 @@ registerIpcHandler('appConfig:write', async (_event, updates) => {
 // ============================================================================
 
 // Key Generation
+registerIpcHandler('crypto:inspectRuntimeCertificate', (_event, pem) => inspectRuntimeCertificate(pem));
+
 registerIpcHandler('crypto:generateIdentityKeyPair', async () => {
   try {
     return await keyManager.generateIdentityKeyPair();
