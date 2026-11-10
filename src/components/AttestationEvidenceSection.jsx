@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import LoadingState from './LoadingState';
 import {
   Button,
   CodeSnippet,
@@ -206,6 +207,14 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
     <div className="attestation-evidence-section">
       <h2 className="workflow-title">{title}</h2>
       <p className="workflow-description">{description}</p>
+
+      {(loadingContext || uploading || verifying) && (
+        <LoadingState
+          variant={verifying ? 'signature-trace' : uploading ? 'archive-pack' : 'task-routing'}
+          description={verifying ? 'Verifying attestation evidence…' : uploading ? 'Uploading attestation evidence…' : 'Loading attestation status…'}
+          size="inline"
+        />
+      )}
 
       {error && (
         <InlineNotification

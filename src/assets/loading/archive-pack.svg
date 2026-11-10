@@ -1,0 +1,62 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="archive-pack" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="archive-pack-title archive-pack-desc">
+  <title id="archive-pack-title">Archivaufbau</title>
+  <desc id="archive-pack-desc">Four document tiles softly travel into an archive folder, whose zipper segments activate in sequence. Continuous archive preparation activity; no upload progress or completion is asserted.</desc>
+  <style>
+#archive-pack { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #archive-pack { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#archive-pack[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#archive-pack[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.archive-pack-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.archive-pack-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.archive-pack-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.archive-pack-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.archive-pack-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.archive-pack-blue { fill:var(--blue); }
+.archive-pack-muted { fill:var(--muted-blue); }
+.archive-pack-soft { fill:var(--soft); }
+.archive-pack-neutral { fill:var(--line); }
+.archive-pack-faint { fill:var(--faint); }
+#archive-pack[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #archive-pack * { animation:none!important; }
+}
+
+.archive-pack-file { animation:archive-file 5.6s cubic-bezier(.4,0,.2,1) infinite; }
+.archive-pack-file-0 { animation-delay:-.30s; } .archive-pack-file-1 { animation-delay:0s; }
+.archive-pack-file-2 { animation-delay:.30s; } .archive-pack-file-3 { animation-delay:.60s; }
+.archive-pack-zip { animation:archive-zip 5.6s ease-in-out infinite; }
+.archive-pack-zip-2 { animation-delay:.2s; } .archive-pack-zip-3 { animation-delay:.4s; } .archive-pack-zip-4 { animation-delay:.6s; }
+.archive-pack-folder { animation:archive-folder 5.6s ease-in-out infinite; }
+@keyframes archive-file { 0%,8%,100% { transform:translate(0,0); opacity:0; } 20% { transform:translate(0,0); opacity:1; } 53% { transform:translate(var(--dx),var(--dy)); opacity:0; } 83% { transform:translate(0,0); opacity:0; } }
+@keyframes archive-zip { 0%,100% { opacity:.22; } 35%,64% { opacity:1; } 88% { opacity:.22; } }
+@keyframes archive-folder { 0%,100% { transform:translateY(0); } 38%,64% { transform:translateY(-3px); } 90% { transform:translateY(0); } }
+</style>
+
+<path class="archive-pack-hairline" d="M88 52h20l24 22m100-22h-20l-24 22M88 128h20l24-22m100 22h-20l-24-22"/>
+<g class="archive-pack-file archive-pack-file-0" style="--dx:66px;--dy:32px"><rect class="archive-pack-outline" x="64" y="40" width="24" height="24"/><path class="archive-pack-detail" d="M70 48h12m-12 5h8"/></g><g class="archive-pack-file archive-pack-file-1" style="--dx:-52px;--dy:32px"><rect class="archive-pack-outline" x="232" y="40" width="24" height="24"/><path class="archive-pack-detail" d="M238 48h12m-12 5h8"/></g><g class="archive-pack-file archive-pack-file-2" style="--dx:66px;--dy:-28px"><rect class="archive-pack-outline" x="64" y="116" width="24" height="24"/><path class="archive-pack-detail" d="M70 124h12m-12 5h8"/></g><g class="archive-pack-file archive-pack-file-3" style="--dx:-52px;--dy:-28px"><rect class="archive-pack-outline" x="232" y="116" width="24" height="24"/><path class="archive-pack-detail" d="M238 124h12m-12 5h8"/></g>
+<g class="archive-pack-folder"><path class="archive-pack-outline" d="M124 60h28l10 10h34v58h-72z"/><path class="archive-pack-track" d="M124 78h72"/><path class="archive-pack-soft" d="M151 79h18v48h-18z"/><path class="archive-pack-accent archive-pack-zip" d="M157 88h6"/><path class="archive-pack-accent archive-pack-zip archive-pack-zip-2" d="M157 96h6"/><path class="archive-pack-accent archive-pack-zip archive-pack-zip-3" d="M157 104h6"/><path class="archive-pack-accent archive-pack-zip archive-pack-zip-4" d="M157 112h6"/><path class="archive-pack-detail" d="M155 119h10v4h-10z"/></g>
+<path class="archive-pack-hairline" d="M124 144h72"/>
+
+</svg>

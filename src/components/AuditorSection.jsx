@@ -19,6 +19,7 @@ import buildService from '../services/buildService';
 import ConfirmDialog from './ConfirmDialog';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
+import LoadingState from './LoadingState';
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
 const STATUS_TAG_TYPE = {
@@ -318,6 +319,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
         />
       )}
 
+      {loadingStatus && <LoadingState variant="key-material" description="Loading build key status…" size="inline" />}
+
       {!loadingStatus && (
         <Tile className="workflow-complete-tile">
           <div className="workflow-complete-tile__row">
@@ -368,6 +371,9 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               >
                 {registeringSigning ? 'Registering...' : (isSigningRegistered ? 'Signing Key Registered' : 'Register Signing Key')}
               </Button>
+              {registeringSigning && (
+                <LoadingState variant="signature-trace" description="Registering signing key…" size="inline" />
+              )}
             </div>
           </div>
         )}
@@ -487,6 +493,9 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
             >
               {registeringAttestation ? 'Registering...' : (isAttestationRegistered ? 'Attestation Key Registered' : 'Register Attestation Key')}
             </Button>
+            {registeringAttestation && (
+              <LoadingState variant="key-material" description="Registering attestation key…" size="inline" />
+            )}
           </div>
         )}
       </div>

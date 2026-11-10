@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import LoadingState from './LoadingState';
 import {
   Button,
-  InlineLoading,
   Layer,
   Tag,
   TextInput,
@@ -146,7 +146,8 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
               : 'Waiting for prerequisites'}
         </Tag>
       </header>
-      {loadingStatus && <InlineLoading description="Checking build status…" />}
+      {loadingStatus && <LoadingState variant="layer-stack" description="Checking build status…" size="inline" />}
+      {busy && operation !== 'status' && <LoadingState variant="contract-assembly" description={operation === 'finalise' ? 'Finalising contract…' : 'Loading contract preview…'} />}
       {statusError && (
         <>
           <CompletionNotice title="Build status unavailable">

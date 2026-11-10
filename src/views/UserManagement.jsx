@@ -1,4 +1,5 @@
 import '../styles/user-directory.scss';
+import LoadingState from '../components/LoadingState';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PageHeader from '../components/PageHeader';
 import { usePageCommand } from '../hooks/usePageCommand';
@@ -12,7 +13,6 @@ import {
   OverflowMenuItem,
   Checkbox,
   ToastNotification,
-  DataTableSkeleton,
   InlineNotification
 } from '@carbon/react';
 import { Add, Renew } from '@carbon/icons-react';
@@ -612,9 +612,7 @@ const UserManagement = () => {
         </div>
       )}
       {loading && !hasLoaded ? (
-        <div role="status" aria-label="Loading users">
-          <DataTableSkeleton rowCount={10} columnCount={6} showHeader={false} showToolbar />
-        </div>
+        <LoadingState variant="table-scan" description="Loading users…" size="page" />
       ) : (
         <UserDirectory
           users={users}

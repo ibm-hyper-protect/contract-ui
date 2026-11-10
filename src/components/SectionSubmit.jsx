@@ -19,6 +19,7 @@ import {
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
+import LoadingState from './LoadingState';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
@@ -256,7 +257,8 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   : 'Waiting for previous stage'}
         </Tag>
       </header>
-      {loading && <InlineLoading description="Loading submission status…" />}
+      {loading && <LoadingState variant="layer-stack" description="Loading submission status…" size="inline" />}
+      {loadingTemplate && <LoadingState variant="archive-pack" description="Loading YAML template…" size="inline" />}
       {contextError && (
         <div className="submission-form__notice">
           <InlineNotification
@@ -564,6 +566,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
         }}
         preventCloseOnClickOutside
       >
+        {submitting && <LoadingState variant="contract-assembly" description={`Submitting ${config.fileLabel}…`} />}
         <p className="submission-form__help">
           Check your YAML and certificate before submitting. Once submitted, this section cannot be
           edited.

@@ -30,7 +30,6 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
-  InlineLoading
 } from '@carbon/react';
 import { Add, WarningAlt, Renew, Download, Filter, Close, TrashCan, Export } from '@carbon/icons-react';
 import { BUILD_STATUS_CONFIG, ROLES } from '../utils/constants';
@@ -39,7 +38,7 @@ import { validateBuildName } from '../utils/validators';
 import userService from '../services/userService';
 import buildService from '../services/buildService';
 import assignmentService from '../services/assignmentService';
-import { InlineLoader, DataTableSkeletonLoader } from '../components/LoadingSpinner';
+import LoadingState from '../components/LoadingState';
 import { useAuthStore } from '../store/authStore';
 import { StatePanel } from '../components/StatePanel';
 import FilterPresetManager from '../components/FilterPresetManager';
@@ -754,12 +753,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
 
       {loading ? (
         <div className="build-management-loading">
-          <DataTableSkeletonLoader
-            rows={5}
-            columns={5}
-            showHeader={true}
-            showToolbar={true}
-          />
+          <LoadingState variant="task-routing" description="Loading builds…" size="page" />
         </div>
       ) : builds.length === 0 ? (
         <StatePanel
@@ -1264,7 +1258,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
 
               {loadingUsers ? (
                 <div className="build-management-users-loading">
-                  <InlineLoader size="sm" message="Loading users..." />
+                  <LoadingState variant="table-scan" description="Loading users…" size="inline" />
                 </div>
               ) : users.length === 0 ? (
                 <div className="build-management-users-error">
