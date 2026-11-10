@@ -268,13 +268,13 @@ function App() {
     resetAuthState();
   }, [resetAuthState]);
 
-  const handleRoleChange = useCallback((nextRole) => {
+  const handleRoleChange = useCallback((nextRole, { preserveBuild = false } = {}) => {
     if (!nextRole || !userRoles.includes(nextRole)) return;
 
     localStorage.setItem('user_role', nextRole);
     setUserRole(nextRole);
     setActivePersona(ROLE_PERSONA_MAP[nextRole] || PERSONAS.VIEWER);
-    setSelectedBuildId(null);
+    if (!preserveBuild) setSelectedBuildId(null);
     setPageCommand(null);
 
     const canAccessAnalytics = nextRole === 'ADMIN';
@@ -322,6 +322,8 @@ function App() {
               activePersona={activePersona}
               userRole={userRole}
               advanceBuildState={advanceBuildState}
+              availableRoles={userRoles}
+              onRoleChange={handleRoleChange}
             />
           );
        }
@@ -342,7 +344,8 @@ function App() {
     loadBuilds,
     advanceBuildState,
     handleBackToBuilds,
-    handleSelectBuild
+    handleSelectBuild,
+    handleRoleChange
   ]);
 
   // Commands request page actions after the destination view has mounted.
