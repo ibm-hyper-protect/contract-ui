@@ -253,6 +253,8 @@ Configuration is defined in `vite.config.js`:
 - Analytics and reporting
 
 ### Solution Provider
+
+Use **Import Docker Compose** in Add workload to package a self-contained Compose file into workload YAML. [Input requirements](docs/compose-import.md).
 - Create and manage builds
 - Define contract sections
 - Assign tasks to other roles
