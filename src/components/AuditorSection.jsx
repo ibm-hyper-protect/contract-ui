@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ContractInputHelp from './ContractInputHelp';
 import {
   Button,
   InlineNotification,
@@ -329,6 +330,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
         </Tile>
       )}
 
+      <ContractInputHelp section="keys" />
       <div className={`workflow-body${isTerminal ? ' workflow-body--disabled' : ''}`}>
         {showSigningCard && (
           <div className="workflow-step-card">
