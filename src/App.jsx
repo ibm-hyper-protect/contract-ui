@@ -68,7 +68,16 @@ function App() {
   const [pageCommand, setPageCommand] = useState(null);
   const [commandError, setCommandError] = useState(null);
   const commandSequence = useRef(0);
+  const theme = useThemeStore(state => state.theme);
   const toggleTheme = useThemeStore(state => state.toggleTheme);
+
+  // Keep <html> in sync so body and portals (modals) use the active Carbon theme
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-carbon-theme', theme);
+    root.classList.remove('cds--white', 'cds--g100');
+    root.classList.add(`cds--${theme}`);
+  }, [theme]);
   const handlePageCommandHandled = useCallback(id => {
     setPageCommand(current => current?.id === id ? null : current);
   }, []);
@@ -457,57 +466,59 @@ function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <ToastProvider>
-        <AppShell
-           activeNav={activeNav}
-           setActiveNav={setActiveNav}
-           onLogout={handleLogout}
-           userRole={userRole}
-           userRoles={userRoles}
-           userEmail={userEmail}
-           onRoleChange={handleRoleChange}
-        >
-          <Modal
-            open={showWelcomeModal}
-            modalHeading={welcomeMessage}
-            primaryButtonText="Get Started"
-            onRequestSubmit={() => setShowWelcomeModal(false)}
-            onRequestClose={() => setShowWelcomeModal(false)}
+    <Theme theme={theme}>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AppShell
+             activeNav={activeNav}
+             setActiveNav={setActiveNav}
+             onLogout={handleLogout}
+             userRole={userRole}
+             userRoles={userRoles}
+             userEmail={userEmail}
+             onRoleChange={handleRoleChange}
           >
-            <p className="app-welcome-copy">
-              You have successfully authenticated into the IBM Confidential Computing Contract UI. Your cryptographic identity has been verified and active workflows are ready for review.
-            </p>
-          </Modal>
-          
-          <KeyboardShortcutsHelp
-            open={showShortcutsHelp}
-            onClose={() => setShowShortcutsHelp(false)}
-          />
-          
-          <CommandPalette
-            open={showCommandPalette}
-            onClose={() => setShowCommandPalette(false)}
-            userRole={userRole}
-            currentView={activeNav}
-            onAction={handleCommandPaletteAction}
-          />
-          
-          {commandError && (
-            <InlineNotification
-              kind="error"
-              title="Unable to open link"
-              subtitle={commandError}
-              lowContrast
-              onCloseButtonClick={() => setCommandError(null)}
+            <Modal
+              open={showWelcomeModal}
+              modalHeading={welcomeMessage}
+              primaryButtonText="Get Started"
+              onRequestSubmit={() => setShowWelcomeModal(false)}
+              onRequestClose={() => setShowWelcomeModal(false)}
+            >
+              <p className="app-welcome-copy">
+                You have successfully authenticated into the IBM Confidential Computing Contract UI. Your cryptographic identity has been verified and active workflows are ready for review.
+              </p>
+            </Modal>
+            
+            <KeyboardShortcutsHelp
+              open={showShortcutsHelp}
+              onClose={() => setShowShortcutsHelp(false)}
             />
-          )}
-          <PageCommandContext.Provider value={pageCommandContext}>
-            {activeView}
-          </PageCommandContext.Provider>
-        </AppShell>
-      </ToastProvider>
-    </ErrorBoundary>
+            
+            <CommandPalette
+              open={showCommandPalette}
+              onClose={() => setShowCommandPalette(false)}
+              userRole={userRole}
+              currentView={activeNav}
+              onAction={handleCommandPaletteAction}
+            />
+            
+            {commandError && (
+              <InlineNotification
+                kind="error"
+                title="Unable to open link"
+                subtitle={commandError}
+                lowContrast
+                onCloseButtonClick={() => setCommandError(null)}
+              />
+            )}
+            <PageCommandContext.Provider value={pageCommandContext}>
+              {activeView}
+            </PageCommandContext.Provider>
+          </AppShell>
+        </ToastProvider>
+      </ErrorBoundary>
+    </Theme>
   );
 }
 
