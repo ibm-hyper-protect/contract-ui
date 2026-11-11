@@ -17,9 +17,9 @@ import {
 } from '@carbon/icons-react';
 import buildService from '../services/buildService';
 import ConfirmDialog from './ConfirmDialog';
+import LoadingState from './LoadingState';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
-import LoadingState from './LoadingState';
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
 const STATUS_TAG_TYPE = {

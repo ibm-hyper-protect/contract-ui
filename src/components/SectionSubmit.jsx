@@ -19,10 +19,10 @@ import {
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
-import LoadingState from './LoadingState';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
+import LoadingState from './LoadingState';
 import {
   hasCertificateContent,
   validateSubmissionFile,
