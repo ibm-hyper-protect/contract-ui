@@ -16,9 +16,9 @@ import {
   Certificate,
 } from '@carbon/icons-react';
 import buildService from '../services/buildService';
+import BuildCertificateReuse from './BuildCertificateReuse';
 import ConfirmDialog from './ConfirmDialog';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
-import BuildCertificateReuse from './BuildCertificateReuse';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
@@ -478,7 +478,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
             </div>
             <BuildCertificateReuse
               buildId={buildId} content={getActiveCertContent()}
-              name={certSource === 'custom' ? customCertFileName : getCertById(selectedCertId)?.label}
+              name={certSource === 'custom' ? customCertFileName : 'Runtime certificate'}
               disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
               onSelect={(value) => { setCertSource('custom'); setCustomCertContent(value.content); setCustomCertFileName(value.name); setError(null); }}
             />

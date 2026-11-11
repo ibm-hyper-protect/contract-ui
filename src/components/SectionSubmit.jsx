@@ -18,6 +18,7 @@ import {
 } from '@carbon/react';
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
 import sectionService from '../services/sectionService';
+import BuildCertificateReuse from './BuildCertificateReuse';
 import buildService from '../services/buildService';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
@@ -28,7 +29,6 @@ import {
   validateSubmissionYaml,
 } from '../utils/submissionForm';
 import AuditorSection from './AuditorSection';
-import BuildCertificateReuse from './BuildCertificateReuse';
 
 const ROLE_CONFIG = {
   SOLUTION_PROVIDER: {
