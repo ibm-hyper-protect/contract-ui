@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
 import PageHeader from '../components/PageHeader';
+import BuildRoleHandoff from '../components/BuildRoleHandoff';
 import {
   Tabs,
   TabList,
@@ -59,10 +60,11 @@ const ROLE_BUILD_TAB_KEYS = {
  * BuildDetails View
  * Integrated view for build management with assignments, section submission, export, and audit
  */
-const BuildDetails = ({ build, onBack, userRole, advanceBuildState }) => {
+const BuildDetails = ({ build, onBack, userRole, advanceBuildState, availableRoles = [], onRoleChange }) => {
   const [selection, setSelection] = useState(null);
   const [statusUpdate, setStatusUpdate] = useState(null);
   const tabsContainer = useRef(null);
+  const handoffFocus = useRef(null);
   const verticalProgress = useSyncExternalStore(subscribeToCompactProgress, getCompactProgress);
   const currentStatus = statusUpdate && statusUpdate.buildId === build?.id && statusUpdate.sourceStatus === build?.status
     ? statusUpdate.status : build?.status;
@@ -85,6 +87,12 @@ const BuildDetails = ({ build, onBack, userRole, advanceBuildState }) => {
   // Keep tab selection with its build and role, rather than reusing an index.
   const selectedTabKey = selection && selection.buildId === build?.id && selection.role === userRole
     ? selection.key : 'assignments';
+  useEffect(() => {
+    if (handoffFocus.current?.role === userRole && handoffFocus.current?.key === selectedTabKey) {
+      tabsContainer.current?.querySelector(`[data-build-tab="${selectedTabKey}"]`)?.focus();
+      handoffFocus.current = null;
+    }
+  }, [userRole, selectedTabKey]);
   const selectedTab = Math.max(0, tabs.findIndex(tab => tab.key === selectedTabKey));
   const selectTab = (key) => setSelection({ buildId: build.id, role: userRole, key });
   const nextTabIndex = tabs.findIndex(tab => tab.key === progress.nextStep?.tab);
@@ -178,6 +186,19 @@ const BuildDetails = ({ build, onBack, userRole, advanceBuildState }) => {
               }}>
                 {progress.nextStep.action}
               </Button>
+            )}
+            {!progress.isLegacy && progress.nextStep.role !== userRole && onRoleChange && availableRoles.includes(progress.nextStep.role) && (
+              <BuildRoleHandoff
+                buildId={build.id}
+                status={currentStatus}
+                role={progress.nextStep.role}
+                roles={availableRoles}
+                onContinue={(role) => {
+                  handoffFocus.current = { role, key: progress.nextStep.tab };
+                  setSelection({ buildId: build.id, role, key: progress.nextStep.tab });
+                  onRoleChange(role, { preserveBuild: true });
+                }}
+              />
             )}
           </div>
         ) : (

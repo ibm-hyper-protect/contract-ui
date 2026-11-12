@@ -14,7 +14,7 @@ class SectionService {
    * @param {string} buildId - Build ID
    * @param {string} personaRole - Persona role (workload_owner, data_owner, auditor)
    * @param {string} plaintext - Section content in plaintext
-   * @param {string} certContent - HPCR encryption certificate content
+   * @param {string} certContent - runtime encryption certificate content
    * @returns {Promise<Object>}
    */
   async submitSection(buildId, personaRole, plaintext, certContent) {
@@ -37,20 +37,13 @@ class SectionService {
       throw new Error(validation.reason);
     }
 
-    // Encrypt section with HPCR certificate
+    // Encrypt section with runtime encryption certificate
     const encryptedPayload = await cryptoService.encryptSection(plaintext, certContent);
 
     // Compute hash of encrypted payload
     const sectionHash = await cryptoService.hash(encryptedPayload);
 
-    // Get private key
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found. Please register your public key first.');
-    }
-
-    // Sign the hash
-    const signature = await cryptoService.sign(sectionHash, privateKey);
+    const { signature, fingerprint } = await cryptoService.signIdentityHash(user.id, sectionHash);
 
     // Submit to backend
     const response = await apiClient.post(`/builds/${buildId}/sections`, {
@@ -59,7 +52,7 @@ class SectionService {
       encrypted_payload: encryptedPayload,
       section_hash: sectionHash,
       signature: signature
-    });
+    }, { identityFingerprint: fingerprint });
 
     return response.data;
   }
@@ -87,9 +80,7 @@ class SectionService {
     const sectionHash = await cryptoService.hash(encryptedPayload);
 
     // Sign the hash
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) throw new Error('Private key not found. Please register your public key first.');
-    const signature = await cryptoService.sign(sectionHash, privateKey);
+    const { signature, fingerprint } = await cryptoService.signIdentityHash(user.id, sectionHash);
 
     const body = {
       persona_role: normalizedRole,
@@ -100,7 +91,7 @@ class SectionService {
     };
     if (wrappedSymmetricKey) body.encrypted_symmetric_key = wrappedSymmetricKey;
 
-    const response = await apiClient.post(`/builds/${buildId}/sections`, body);
+    const response = await apiClient.post(`/builds/${buildId}/sections`, body, { identityFingerprint: fingerprint });
     return response.data;
   }
 
@@ -143,7 +134,7 @@ class SectionService {
    * Prepare section for submission (encrypt only, don't submit)
    * Useful for preview or validation
    * @param {string} plaintext - Section content
-   * @param {string} certContent - HPCR encryption certificate
+   * @param {string} certContent - runtime encryption certificate
    * @returns {Promise<string>} - Encrypted payload
    */
   async prepareSection(plaintext, certContent) {
@@ -168,12 +159,8 @@ class SectionService {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
 
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found');
-    }
-
-    return await cryptoService.sign(sectionHash, privateKey);
+    const { signature } = await cryptoService.signIdentityHash(user.id, sectionHash);
+    return signature;
   }
 
   /**

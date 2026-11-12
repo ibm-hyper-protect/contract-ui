@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LoadingState from './LoadingState';
 import { Button, Layer, Tag, Tile } from '@carbon/react';
 import { Checkmark, Download, Renew, View } from '@carbon/icons-react';
 import { useBuildStore } from '../store/buildStore';
@@ -153,6 +154,12 @@ function ContractExportForm({ buildId, buildStatus, onStatusUpdate }) {
                 : 'Waiting for finalisation'}
         </Tag>
       </header>
+      {busy && (
+        <LoadingState
+          variant={operation === 'verify' ? 'key-material' : 'contract-assembly'}
+          description={operation === 'verify' ? 'Checking contract integrity…' : operation === 'save' ? 'Saving and acknowledging contract…' : 'Loading contract…'}
+        />
+      )}
       {error && (
         <CompletionNotice title={error.title}>{error.message}</CompletionNotice>
       )}

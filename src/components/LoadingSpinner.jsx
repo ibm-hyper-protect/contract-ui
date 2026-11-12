@@ -1,6 +1,6 @@
 import React from 'react';
+import LoadingState from './LoadingState';
 import {
-  Loading,
   InlineLoading,
   DataTableSkeleton,
   SkeletonText,
@@ -16,7 +16,7 @@ import {
 export const FullPageLoader = ({ description = 'Loading...' }) => {
   return (
     <div className="loading-spinner-full-page">
-      <Loading description={description} withOverlay={false} />
+      <LoadingState variant="analytics" description={description} size="page" />
     </div>
   );
 };

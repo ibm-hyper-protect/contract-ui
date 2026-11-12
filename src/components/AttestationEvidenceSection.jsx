@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import LoadingState from './LoadingState';
 import {
   Button,
   CodeSnippet,
@@ -71,7 +72,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
   const title = isUploadMode ? 'Upload Attestation Records' : 'Verify Attestation Records';
   const description = isUploadMode
     ? 'Data Owner or Environment Operator can upload attestation records and signature files after contract download.'
-    : 'Auditor verification uses backend HpcrGetAttestationRecords() and HpcrVerifySignatureAttestationRecords().';
+    : 'The backend decrypts the evidence and verifies its signature using the runtime attestation certificate.';
 
   const buildStatusUpper = String(liveBuildStatus || '').toUpperCase();
   const attestationState = String(
@@ -176,7 +177,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
       const result = await buildService.verifyAttestationEvidence(
         buildId,
         latestEvidenceId,
-        attestationKeyPassphrase
+        attestationKeyPassphrase.trim()
       );
       setVerifyResult(result);
       const verdict = String(result?.verdict || 'UNKNOWN').toUpperCase();
@@ -206,6 +207,14 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
     <div className="attestation-evidence-section">
       <h2 className="workflow-title">{title}</h2>
       <p className="workflow-description">{description}</p>
+
+      {(loadingContext || uploading || verifying) && (
+        <LoadingState
+          variant={verifying ? 'signature-trace' : uploading ? 'archive-pack' : 'task-routing'}
+          description={verifying ? 'Verifying attestation evidence…' : uploading ? 'Uploading attestation evidence…' : 'Loading attestation status…'}
+          size="inline"
+        />
+      )}
 
       {error && (
         <InlineNotification
@@ -345,7 +354,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
               id="attestation-verify-passphrase"
               labelText="Attestation Key Passphrase"
               placeholder="Enter attestation key passphrase"
-              helperText="Required when the attestation private key is encrypted."
+              helperText="Required when the attestation private key is encrypted. Leading and trailing whitespace is ignored."
               value={attestationKeyPassphrase}
               onChange={(e) => setAttestationKeyPassphrase(e.target.value)}
               autoComplete="new-password"

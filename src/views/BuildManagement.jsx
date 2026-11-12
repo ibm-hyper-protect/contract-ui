@@ -30,7 +30,6 @@ import {
   DatePicker,
   DatePickerInput,
   Dropdown,
-  InlineLoading
 } from '@carbon/react';
 import { Add, WarningAlt, Renew, Download, Filter, Close, TrashCan, Export } from '@carbon/icons-react';
 import { BUILD_STATUS_CONFIG, ROLES } from '../utils/constants';
@@ -39,7 +38,8 @@ import { validateBuildName } from '../utils/validators';
 import userService from '../services/userService';
 import buildService from '../services/buildService';
 import assignmentService from '../services/assignmentService';
-import { InlineLoader, DataTableSkeletonLoader } from '../components/LoadingSpinner';
+import LoadingState from '../components/LoadingState';
+import { DataTableSkeletonLoader } from '../components/LoadingSpinner';
 import { useAuthStore } from '../store/authStore';
 import { StatePanel } from '../components/StatePanel';
 import FilterPresetManager from '../components/FilterPresetManager';
@@ -531,7 +531,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
   const isUserReady = (u) =>
     u.is_active &&
     !u.must_change_password &&
-    u.public_key_fingerprint != null;
+    (typeof u.active_key_count === 'number' ? u.active_key_count > 0 : u.public_key_fingerprint != null);
 
   const readyUsers = useMemo(() => users.filter(isUserReady), [users]);
   const eligibleUsersByRole = useMemo(
@@ -753,7 +753,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
       )}
 
       {loading ? (
-        <div className="build-management-loading">
+        <div className="build-management-loading" role="status" aria-label="Loading builds">
           <DataTableSkeletonLoader
             rows={5}
             columns={5}
@@ -1264,7 +1264,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
 
               {loadingUsers ? (
                 <div className="build-management-users-loading">
-                  <InlineLoader size="sm" message="Loading users..." />
+                  <LoadingState variant="table-scan" description="Loading users…" size="inline" />
                 </div>
               ) : users.length === 0 ? (
                 <div className="build-management-users-error">

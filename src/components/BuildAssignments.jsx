@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingState from './LoadingState';
 import {
   DataTable,
   TableContainer,
@@ -210,6 +211,7 @@ const BuildAssignments = ({ buildId, buildStatus, userRole, onStatusUpdate }) =>
 
   return (
     <div className="build-assignments">
+      {loading && <LoadingState variant="task-routing" description="Loading build assignments…" size="inline" />}
       {error && (
         <InlineNotification
           kind="error"

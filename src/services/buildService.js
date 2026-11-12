@@ -6,20 +6,17 @@ import sectionService from './sectionService';
 import exportService from './exportService';
 import verificationService from './verificationService';
 
-const WORKLOAD_TEMPLATE_FALLBACK = `workload:
-  compose:
-    archive: ""
-  type: compose
+const WORKLOAD_TEMPLATE_FALLBACK = `type: workload
+compose:
+  archive: ""
 `;
 
-const ENV_TEMPLATE_FALLBACK = `env:
-  type: env
-  logging:
-    logRouter:
-      hostname: ""
-      iamApiKey: ""
-      port: 443
-signingKey: <signing key or certificate>
+const ENV_TEMPLATE_FALLBACK = `type: env
+logging:
+  logRouter:
+    hostname: ""
+    iamApiKey: ""
+    port: 443
 `;
 
 const readBrowserFileAsText = async (file) => {
@@ -103,7 +100,7 @@ class BuildService {
   async registerSigningKey(buildId, data = {}) {
     const payload = {
       mode: data.mode || 'generate',
-      ...(data.passphrase ? { passphrase: data.passphrase } : {}),
+      ...(data.passphrase ? { passphrase: data.passphrase.trim() } : {}),
       ...(data.public_key ? { public_key: data.public_key } : {})
     };
     try {
@@ -136,7 +133,7 @@ class BuildService {
   async registerAttestationKey(buildId, data = {}) {
     const payload = {
       mode: data.mode || 'generate',
-      ...(data.passphrase ? { passphrase: data.passphrase } : {}),
+      ...(data.passphrase ? { passphrase: data.passphrase.trim() } : {}),
       ...(data.public_key ? { public_key: data.public_key } : {}),
       ...(data.encryption_cert_pem ? { encryption_cert_pem: data.encryption_cert_pem } : {})
     };
@@ -172,7 +169,29 @@ class BuildService {
   }
 
   /**
-   * Submit workload section (v2 backend-native encryption)
+   * Validate raw or complete contract YAML and return the selected normalized section.
+   * @param {string} plaintext
+   * @param {'workload'|'env'|''} section
+   * @returns {Promise<{valid: boolean, plaintext: string}>}
+   */
+  async validateContractInput(plaintext, section) {
+    try {
+      const response = await apiClient.post('/v2/contract-validate', { plaintext, section });
+      if (response.data?.valid !== true || typeof response.data.plaintext !== 'string') {
+        throw new Error('The backend did not return a valid contract validation result.');
+      }
+      return response.data;
+    } catch (error) {
+      const status = error?.status ?? error?.response?.status ?? error?.original?.response?.status;
+      if (status === 404) {
+        throw new Error('This backend does not support contract validation. Update the backend before submitting.');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Submit workload section using backend encryption.
    * @param {string} buildId
    * @param {{plaintext: string, certificate_pem: string}} data
    * @returns {Promise<Object>}
@@ -250,7 +269,7 @@ class BuildService {
    */
   async finalizeBuildV2(buildId, data) {
     const response = await apiClient.post(`/builds/${buildId}/v2/finalize`, {
-      signing_key_passphrase: data.signing_key_passphrase
+      signing_key_passphrase: data.signing_key_passphrase.trim()
     });
     useBuildStore.getState().updateBuildStatus(buildId, 'FINALIZED');
     return response.data;
@@ -317,7 +336,7 @@ class BuildService {
       throw new Error('Evidence ID is required for verification.');
     }
     const response = await apiClient.post(`/builds/${buildId}/attestation/evidence/${evidenceId}/verify`, {
-      attestation_key_passphrase: attestationKeyPassphrase || ''
+      attestation_key_passphrase: attestationKeyPassphrase.trim()
     });
     return response.data;
   }
@@ -445,7 +464,7 @@ class BuildService {
    * @param {string} buildId - Build ID
    * @param {string} personaRole - Persona role
    * @param {string} plaintext - Section content
-   * @param {string} certContent - HPCR certificate
+   * @param {string} certContent - runtime encryption certificate
    * @returns {Promise<Object>}
    */
   async submitSection(buildId, personaRole, plaintext, certContent) {

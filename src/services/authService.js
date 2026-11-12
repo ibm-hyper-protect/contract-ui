@@ -72,58 +72,6 @@ class AuthService {
   }
 
   /**
-   * Register public key for current user
-   * @param {string} publicKey - PEM formatted public key
-   * @returns {Promise<{fingerprint, expires_at}>}
-   */
-  async registerPublicKey(publicKey) {
-    const user = useAuthStore.getState().user;
-    const response = await apiClient.put(`/users/${user.id}/public-key`, {
-      public_key: publicKey
-    });
-
-    const { fingerprint, created_at, expires_at } = response.data;
-
-    const store = useAuthStore.getState();
-    const pending = response.data?.setup_pending || [];
-    const requiresSetup = response.data?.requires_setup ?? (pending.length > 0);
-    const mustChangePassword = response.data?.must_change_password ?? pending.includes('password_change');
-
-    // Update auth store with key metadata and setup state.
-    store.updatePublicKey(
-      fingerprint,
-      expires_at || null
-    );
-    store.setMustChangePassword(!!mustChangePassword);
-    store.setSetupState({ requiresSetup, setupPending: pending });
-
-    return {
-      fingerprint: fingerprint,
-      createdAt: created_at || null,
-      expiresAt: expires_at || null
-    };
-  }
-
-  /**
-   * Get public key for a user (or current user if userId is null)
-   * @param {string} userId - Optional user ID
-   */
-  async getPublicKey(userId = null) {
-    const targetId = userId || useAuthStore.getState().user.id;
-    const response = await apiClient.get(`/users/${targetId}/public-key`);
-    return response.data;
-  }
-
-  /**
-   * Get public key for current logged in user
-   */
-  async getMyPublicKey() {
-    const user = useAuthStore.getState().user;
-    const response = await apiClient.get(`/users/${user.id}/public-key`);
-    return response.data;
-  }
-
-  /**
    * Validate current session token
    * @returns {Promise<boolean>}
    */
@@ -177,29 +125,6 @@ class AuthService {
       expiresAt: user.public_key_expires_at,
       fingerprint: user.public_key_fingerprint
     };
-  }
-
-  /**
-   * Get public key for a specific user (admin only)
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>}
-   */
-  async getPublicKey(userId) {
-    const response = await apiClient.get(`/users/${userId}/public-key`);
-    return response.data;
-  }
-
-  /**
-   * Register public key for a specific user (admin only)
-   * @param {string} userId - User ID
-   * @param {string} publicKey - PEM formatted public key
-   * @returns {Promise<Object>}
-   */
-  async registerPublicKeyForUser(userId, publicKey) {
-    const response = await apiClient.put(`/users/${userId}/public-key`, {
-      public_key: publicKey
-    });
-    return response.data;
   }
 
   /**

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import LoadingState from './LoadingState';
 import {
   Button,
-  InlineLoading,
   Layer,
   Tag,
   TextInput,
@@ -85,7 +85,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
   async function finalise(event) {
     event.preventDefault();
     if (!ready || loadingStatus || statusError || busy) return;
-    if (!passphrase) {
+    if (!passphrase.trim()) {
       setInvalid(true);
       return;
     }
@@ -93,7 +93,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
     setError('');
     try {
       const result = await buildService.finalizeBuildV2(buildId, {
-        signing_key_passphrase: passphrase,
+        signing_key_passphrase: passphrase.trim(),
       });
       if (!active.current) return;
       setAccepted(true);
@@ -146,7 +146,8 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
               : 'Waiting for prerequisites'}
         </Tag>
       </header>
-      {loadingStatus && <InlineLoading description="Checking build status…" />}
+      {loadingStatus && <LoadingState variant="layer-stack" description="Checking build status…" size="inline" />}
+      {busy && operation !== 'status' && <LoadingState variant="contract-assembly" description={operation === 'finalise' ? 'Finalising contract…' : 'Loading contract preview…'} />}
       {statusError && (
         <>
           <CompletionNotice title="Build status unavailable">
@@ -236,7 +237,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
                     invalid={invalid}
                     invalidText="Enter the signing key passphrase."
                     autoComplete="off"
-                    helperText="Use the passphrase set when the signing key was registered. It is cleared after finalisation."
+                    helperText="Use the passphrase set when the signing key was registered. Leading and trailing whitespace is ignored. It is cleared after finalisation."
                   />
                   <div className="contract-completion__actions">
                     <Button type="submit" renderIcon={Checkmark}>
