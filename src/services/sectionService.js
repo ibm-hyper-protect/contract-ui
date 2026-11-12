@@ -43,14 +43,7 @@ class SectionService {
     // Compute hash of encrypted payload
     const sectionHash = await cryptoService.hash(encryptedPayload);
 
-    // Get private key
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found. Please register your public key first.');
-    }
-
-    // Sign the hash
-    const signature = await cryptoService.sign(sectionHash, privateKey);
+    const { signature, fingerprint } = await cryptoService.signIdentityHash(user.id, sectionHash);
 
     // Submit to backend
     const response = await apiClient.post(`/builds/${buildId}/sections`, {
@@ -59,7 +52,7 @@ class SectionService {
       encrypted_payload: encryptedPayload,
       section_hash: sectionHash,
       signature: signature
-    });
+    }, { identityFingerprint: fingerprint });
 
     return response.data;
   }
@@ -87,9 +80,7 @@ class SectionService {
     const sectionHash = await cryptoService.hash(encryptedPayload);
 
     // Sign the hash
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) throw new Error('Private key not found. Please register your public key first.');
-    const signature = await cryptoService.sign(sectionHash, privateKey);
+    const { signature, fingerprint } = await cryptoService.signIdentityHash(user.id, sectionHash);
 
     const body = {
       persona_role: normalizedRole,
@@ -100,7 +91,7 @@ class SectionService {
     };
     if (wrappedSymmetricKey) body.encrypted_symmetric_key = wrappedSymmetricKey;
 
-    const response = await apiClient.post(`/builds/${buildId}/sections`, body);
+    const response = await apiClient.post(`/builds/${buildId}/sections`, body, { identityFingerprint: fingerprint });
     return response.data;
   }
 
@@ -168,12 +159,8 @@ class SectionService {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
 
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found');
-    }
-
-    return await cryptoService.sign(sectionHash, privateKey);
+    const { signature } = await cryptoService.signIdentityHash(user.id, sectionHash);
+    return signature;
   }
 
   /**
