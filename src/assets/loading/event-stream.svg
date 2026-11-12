@@ -1,0 +1,86 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="event-stream" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="event-stream-title event-stream-desc">
+  <title id="event-stream-title">Ereignisfluss</title>
+  <desc id="event-stream-desc">A blue pulse moves down a three-row event timeline while rows settle into place. Decorative audit loading activity; these shapes do not represent actual audit entries.</desc>
+  <style>
+#event-stream { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #event-stream { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#event-stream[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#event-stream[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.event-stream-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.event-stream-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.event-stream-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.event-stream-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.event-stream-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.event-stream-blue { fill:var(--blue); }
+.event-stream-muted { fill:var(--muted-blue); }
+.event-stream-soft { fill:var(--soft); }
+.event-stream-neutral { fill:var(--line); }
+.event-stream-faint { fill:var(--faint); }
+#event-stream[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #event-stream * { animation:none!important; }
+}
+
+.event-stream-row { animation:event-row 4.8s cubic-bezier(.4,0,.2,1) infinite; }
+.event-stream-row-2 { animation-delay:.38s; } .event-stream-row-3 { animation-delay:.76s; }
+.event-stream-node { animation:event-node 4.8s ease-in-out infinite; }
+.event-stream-node-2 { animation-delay:.38s; } .event-stream-node-3 { animation-delay:.76s; }
+.event-stream-trace { stroke-dasharray:24 180; animation:event-trace 4.8s cubic-bezier(.4,0,.2,1) infinite; }
+@keyframes event-row { 0%,100% { opacity:.35; transform:translateX(6px); } 22%,61% { opacity:1; transform:translateX(0); } 86% { opacity:.35; transform:translateX(6px); } }
+@keyframes event-node { 0%,100% { opacity:.24; } 22%,61% { opacity:1; } 86% { opacity:.24; } }
+@keyframes event-trace { 0% { stroke-dashoffset:204; opacity:0; } 12% { opacity:.8; } 70% { stroke-dashoffset:0; opacity:.8; } 86%,100% { stroke-dashoffset:0; opacity:0; } }
+</style>
+
+<path class="event-stream-track" d="M64 36v104"/>
+<path class="event-stream-accent event-stream-trace" d="M64 36v104"/>
+<g class="event-stream-row event-stream-row-1">
+  <rect class="event-stream-outline" x="88" y="34" width="180" height="28"/>
+  <rect class="event-stream-soft" x="89" y="35" width="3" height="26"/>
+  <path class="event-stream-detail" d="M102 44h8v8h-8z"/>
+  <path class="event-stream-track" d="M122 44h82m-82 8h50"/>
+  <path class="event-stream-accent" d="M242 48h12"/>
+</g>
+<g class="event-stream-row event-stream-row-2">
+  <rect class="event-stream-outline" x="88" y="74" width="180" height="28"/>
+  <rect class="event-stream-soft" x="89" y="75" width="3" height="26"/>
+  <path class="event-stream-detail" d="M102 84h8v8h-8z"/>
+  <path class="event-stream-track" d="M122 84h62m-62 8h92"/>
+  <path class="event-stream-accent" d="M242 88h12"/>
+</g>
+<g class="event-stream-row event-stream-row-3">
+  <rect class="event-stream-outline" x="88" y="114" width="180" height="28"/>
+  <rect class="event-stream-soft" x="89" y="115" width="3" height="26"/>
+  <path class="event-stream-detail" d="M102 124h8v8h-8z"/>
+  <path class="event-stream-track" d="M122 124h96m-96 8h60"/>
+  <path class="event-stream-accent" d="M242 128h12"/>
+</g>
+<rect class="event-stream-outline" x="60" y="44" width="8" height="8"/>
+<rect class="event-stream-outline" x="60" y="84" width="8" height="8"/>
+<rect class="event-stream-outline" x="60" y="124" width="8" height="8"/>
+<rect class="event-stream-blue event-stream-node event-stream-node-1" x="61" y="45" width="6" height="6"/>
+<rect class="event-stream-blue event-stream-node event-stream-node-2" x="61" y="85" width="6" height="6"/>
+<rect class="event-stream-blue event-stream-node event-stream-node-3" x="61" y="125" width="6" height="6"/>
+
+</svg>

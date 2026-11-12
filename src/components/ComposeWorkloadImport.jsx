@@ -16,20 +16,24 @@ limitations under the License.
 */
 
 import React, { useRef, useState } from 'react';
-import { Checkbox, FileUploaderDropContainer, InlineNotification, Modal, PasswordInput, Stack, TextInput } from '@carbon/react';
+import { Button, Checkbox, FileUploaderDropContainer, InlineNotification, Modal, PasswordInput, Stack, TextInput } from '@carbon/react';
+import { Add, TrashCan } from '@carbon/icons-react';
+import '../styles/compose-import.scss';
 
 /** Import one self-contained Compose definition into the existing YAML review. */
 export default function ComposeWorkloadImport({ onClose, onApply }) {
   const [file, setFile] = useState(null);
   const [content, setContent] = useState('');
   const [addVolume, setAddVolume] = useState(false);
-  const [name, setName] = useState('data');
-  const [mount, setMount] = useState('/mnt/data');
-  const [seed, setSeed] = useState('');
+  const [volumes, setVolumes] = useState([{ id: 0, name: 'data', mount: '/mnt/data', seed: '' }]);
+  const nextVolumeId = useRef(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const sequence = useRef(0);
   const prefix = 'compose-import';
+  function updateVolume(id, field, value) {
+    setVolumes(items => items.map(item => item.id === id ? { ...item, [field]: value } : item));
+  }
   async function readFile(selected) {
     if (!selected || busy) return;
     const request = ++sequence.current;
@@ -48,7 +52,7 @@ export default function ComposeWorkloadImport({ onClose, onApply }) {
     try {
       if (!window.electron?.workload?.prepareCompose) throw new Error('Compose import requires the Electron desktop application.');
       const result = await window.electron.workload.prepareCompose({
-        content, volume: addVolume ? { name, mount, seed } : null,
+        content, volumes: addVolume ? volumes.map(({ name, mount, seed }) => ({ name, mount, seed })) : [],
       });
       onApply(result.plaintext);
     } catch (failure) { setError(failure.message || 'Unable to prepare the workload.'); }
@@ -56,7 +60,7 @@ export default function ComposeWorkloadImport({ onClose, onApply }) {
   }
   return <Modal open size="lg" modalHeading="Import Docker Compose" modalLabel="Workload preparation"
     primaryButtonText={busy ? 'Preparing…' : 'Review workload YAML'} secondaryButtonText="Cancel"
-    primaryButtonDisabled={!file || busy || (addVolume && !seed.trim())}
+    primaryButtonDisabled={!file || busy || (addVolume && volumes.some(item => !item.name.trim() || !item.mount.trim() || !item.seed.trim()))}
     onRequestSubmit={prepare} onRequestClose={() => { if (!busy) onClose(); }} onSecondarySubmit={() => { if (!busy) onClose(); }} preventCloseOnClickOutside>
     <Stack gap={5}>
       <p>Upload a self-contained Compose file. The app packages it as docker-compose.yaml in a tar.gz archive and adds its Base64 representation to the workload.</p>
@@ -64,12 +68,25 @@ export default function ComposeWorkloadImport({ onClose, onApply }) {
         disabled={busy} onAddFiles={(_, { addedFiles }) => readFile(addedFiles[0])} />
       {file && <p role="status">Selected: {file}</p>}
       <p>Push images before importing. Resolve .env substitutions and local file references first. Absolute bind paths refer to the guest, not this computer.</p>
-      <Checkbox id={prefix + '-volume'} labelText="Add an ext4 persistent volume" checked={addVolume}
+      <Checkbox id={prefix + '-volume'} labelText="Add ext4 persistent volumes" checked={addVolume}
         disabled={busy} onChange={(_, { checked }) => setAddVolume(checked)} />
       {addVolume && <>
-        <TextInput id={prefix + '-name'} labelText="Volume name" value={name} disabled={busy} onChange={event => setName(event.target.value)} helperText="Use the same name in the environment section." />
-        <TextInput id={prefix + '-mount'} labelText="Guest mount path" value={mount} disabled={busy} onChange={event => setMount(event.target.value)} helperText="Match the absolute bind path in Compose, for example /mnt/data." />
-        <PasswordInput id={prefix + '-seed'} labelText="Workload volume seed" value={seed} disabled={busy} onChange={event => setSeed(event.target.value)} autoComplete="off" helperText="For existing data, retain the original workload seed and the original environment seed. This importer does not generate or replace seeds." />
+        {volumes.map((volume, index) => <fieldset key={volume.id} className="compose-import__volume">
+          <legend>Volume {index + 1}</legend>
+          <Stack gap={5}>
+            <div className="compose-import__fields">
+              <TextInput id={`${prefix}-${volume.id}-name`} labelText="Volume name" value={volume.name} disabled={busy} onChange={event => updateVolume(volume.id, 'name', event.target.value)} helperText="Use the same name in the environment section." />
+              <TextInput id={`${prefix}-${volume.id}-mount`} labelText="Guest mount path" value={volume.mount} disabled={busy} onChange={event => updateVolume(volume.id, 'mount', event.target.value)} helperText="Match the absolute bind path in Compose, for example /mnt/data." />
+            </div>
+            <PasswordInput id={`${prefix}-${volume.id}-seed`} labelText="Workload volume seed" value={volume.seed} disabled={busy} onChange={event => updateVolume(volume.id, 'seed', event.target.value)} autoComplete="off" />
+            <Button kind="ghost" size="sm" renderIcon={TrashCan} disabled={busy || volumes.length === 1} aria-label={`Remove volume ${index + 1}`} onClick={() => setVolumes(items => items.filter(item => item.id !== volume.id))}>Remove volume</Button>
+          </Stack>
+        </fieldset>)}
+        <Button kind="tertiary" size="sm" renderIcon={Add} disabled={busy} onClick={() => {
+          const id = nextVolumeId.current++;
+          setVolumes(items => [...items, { id, name: '', mount: '', seed: '' }]);
+        }}>Add volume</Button>
+        <p>For each volume, use the same name in the environment section with its own environment seed. For existing data, retain both original seeds. This importer does not generate or replace seeds.</p>
       </>}
       {error && <InlineNotification kind="error" title="Compose could not be imported" subtitle={error} hideCloseButton lowContrast />}
     </Stack>

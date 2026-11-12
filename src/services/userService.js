@@ -107,20 +107,6 @@ class UserService {
   }
 
   /**
-   * Register public key for a user (admin only)
-   * @param {string} userId - User ID
-   * @param {string} publicKey - PEM formatted public key
-   * @returns {Promise<Object>}
-   */
-  async registerPublicKeyForUser(userId, publicKey) {
-    const response = await apiClient.put(`/users/${userId}/public-key`, {
-      public_key: publicKey
-    });
-
-    return response.data;
-  }
-
-  /**
    * Get user's public key (admin only)
    * @param {string} userId - User ID
    * @returns {Promise<Object>}
@@ -155,12 +141,12 @@ class UserService {
   }
 
   /**
-   * Force key rotation by revoking current public key (admin only)
+   * Force key rotation by revoking all active public keys (admin only)
    * @param {string} userId - User ID
    * @returns {Promise<Object>}
    */
   async forceKeyRotation(userId) {
-    const response = await apiClient.post(`/rotation/revoke-key/${userId}`);
+    const response = await apiClient.post(`/users/${userId}/public-keys/revoke-all`);
     return response.data;
   }
 

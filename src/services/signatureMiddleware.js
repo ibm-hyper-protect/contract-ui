@@ -10,9 +10,8 @@ class SignatureMiddleware {
     const m = (method || '').toUpperCase();
     const path = (url || '').split('?')[0];
 
-    if (m === 'POST' && path === '/auth/logout') return true;
+    if (m === 'POST' && ['/auth/login', '/auth/logout'].includes(path)) return true;
     if (m === 'PATCH' && /^\/users\/[^/]+\/password\/?$/.test(path)) return true;
-    if (m === 'PUT' && /^\/users\/[^/]+\/public-key\/?$/.test(path)) return true;
     return false;
   }
 
@@ -23,7 +22,7 @@ class SignatureMiddleware {
    * @param {Object} data - Request body
    * @returns {Promise<Object>} - Signature headers
    */
-  async signRequest(method, url, data) {
+  async signRequest(method, url, data, options = {}) {
     const user = useAuthStore.getState().user;
     const upperMethod = (method || '').toUpperCase();
     if (!user) return {};
@@ -38,11 +37,9 @@ class SignatureMiddleware {
       return {};
     }
 
-    // Get private key
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Local signing key not found. Open Account Settings and register your public key again.');
-    }
+    // Only registration with zero server-confirmed active keys may be unsigned.
+    const registration = upperMethod === 'PUT' && /^\/users\/[^/]+\/public-key\/?$/.test((url || '').split('?')[0]);
+    if (registration && options.unsignedKeyRegistration === true) return {};
 
     // Normalize payload data so object and equivalent JSON-string payloads hash identically.
     let normalizedData = data ?? null;
@@ -72,14 +69,14 @@ class SignatureMiddleware {
     const hash = await cryptoService.hash(payload);
 
     // Sign hash
-    const signature = await cryptoService.sign(hash, privateKey);
+    const { signature, fingerprint } = await cryptoService.signIdentityHash(user.id, hash, options.identityFingerprint);
 
     // Return signature headers
     return {
       'X-Signature': signature,
       'X-Signature-Hash': hash,
       'X-Timestamp': timestamp.toString(),
-      'X-Key-Fingerprint': user.public_key_fingerprint || user.publicKeyFingerprint || ''
+      'X-Key-Fingerprint': fingerprint
     };
   }
 
@@ -94,11 +91,6 @@ class SignatureMiddleware {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
 
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found. Please register your public key first.');
-    }
-
     const payload = JSON.stringify({
       buildId,
       action,
@@ -107,7 +99,7 @@ class SignatureMiddleware {
     });
 
     const hash = await cryptoService.hash(payload);
-    const signature = await cryptoService.sign(hash, privateKey);
+    const { signature } = await cryptoService.signIdentityHash(user.id, hash);
 
     return { hash, signature };
   }
@@ -121,13 +113,8 @@ class SignatureMiddleware {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
 
-    const privateKey = await cryptoService.getPrivateKey(user.id);
-    if (!privateKey) {
-      throw new Error('Private key not found. Please register your public key first.');
-    }
-
     const hash = await cryptoService.hash(data);
-    const signature = await cryptoService.sign(hash, privateKey);
+    const { signature } = await cryptoService.signIdentityHash(user.id, hash);
 
     return { hash, signature };
   }

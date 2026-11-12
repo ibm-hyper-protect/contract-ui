@@ -1,0 +1,76 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="contract-assembly" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="contract-assembly-title contract-assembly-desc">
+  <title id="contract-assembly-title">Contract-Aufbau</title>
+  <desc id="contract-assembly-desc">Two input sections stream into a folded document, its lines are assembled, and a packet moves toward an output tile. Indeterminate contract processing activity; no completion is claimed.</desc>
+  <style>
+#contract-assembly { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #contract-assembly { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#contract-assembly[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#contract-assembly[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.contract-assembly-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.contract-assembly-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.contract-assembly-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.contract-assembly-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.contract-assembly-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.contract-assembly-blue { fill:var(--blue); }
+.contract-assembly-muted { fill:var(--muted-blue); }
+.contract-assembly-soft { fill:var(--soft); }
+.contract-assembly-neutral { fill:var(--line); }
+.contract-assembly-faint { fill:var(--faint); }
+#contract-assembly[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #contract-assembly * { animation:none!important; }
+}
+
+.contract-assembly-feed { stroke-dasharray:12 160; animation:contract-feed 5.6s cubic-bezier(.4,0,.2,1) infinite; }
+.contract-assembly-feed-2 { animation-delay:.42s; }
+.contract-assembly-ink { stroke-dasharray:44; animation:contract-ink 5.6s ease-in-out infinite; }
+.contract-assembly-ink-2 { animation-delay:.20s; } .contract-assembly-ink-3 { animation-delay:.40s; }
+.contract-assembly-output { stroke-dasharray:10 100; animation:contract-output 5.6s cubic-bezier(.4,0,.2,1) infinite; }
+.contract-assembly-document-accent { animation:contract-accent 5.6s ease-in-out infinite; }
+@keyframes contract-feed { 0%,4% { stroke-dashoffset:172; opacity:0; } 14% { opacity:1; } 42% { stroke-dashoffset:0; opacity:1; } 52%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes contract-ink { 0%,12%,100% { stroke-dashoffset:44; opacity:.1; } 42%,72% { stroke-dashoffset:0; opacity:.9; } 93% { stroke-dashoffset:44; opacity:.1; } }
+@keyframes contract-output { 0%,46% { stroke-dashoffset:110; opacity:0; } 54% { opacity:1; } 86% { stroke-dashoffset:0; opacity:1; } 96%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes contract-accent { 0%,100% { opacity:.22; } 34%,72% { opacity:1; } }
+</style>
+
+<path class="contract-assembly-track" d="M80 64h24l24 14h12M80 112h24l24-14h12M212 88h28"/>
+<path class="contract-assembly-accent contract-assembly-feed" d="M80 64h24l24 14h12"/>
+<path class="contract-assembly-accent contract-assembly-feed contract-assembly-feed-2" d="M80 112h24l24-14h12"/>
+<path class="contract-assembly-accent contract-assembly-output" d="M212 88h28"/>
+<rect class="contract-assembly-outline" x="40" y="48" width="40" height="32"/>
+<rect class="contract-assembly-outline" x="40" y="96" width="40" height="32"/>
+<path class="contract-assembly-detail" d="M51 58h18m-18 6h12m-12 6h16m-16 36h18m-18 6h12m-12 6h16"/>
+<path class="contract-assembly-outline" d="M136 34h56l20 20v88h-76z"/>
+<path class="contract-assembly-track" d="M192 34v20h20"/>
+<path class="contract-assembly-accent contract-assembly-document-accent" d="M136 34h56"/>
+<path class="contract-assembly-track" d="M152 74h42m-42 14h33m-33 14h42M152 122h16"/>
+<path class="contract-assembly-accent contract-assembly-ink" d="M152 74h42"/>
+<path class="contract-assembly-accent contract-assembly-ink contract-assembly-ink-2" d="M152 88h33"/>
+<path class="contract-assembly-accent contract-assembly-ink contract-assembly-ink-3" d="M152 102h42"/>
+<rect class="contract-assembly-outline" x="240" y="70" width="40" height="36"/>
+<path class="contract-assembly-detail" d="M250 82h20m-20 6h20m-20 6h12"/>
+<rect class="contract-assembly-blue contract-assembly-document-accent" x="136" y="138" width="76" height="4"/>
+
+</svg>

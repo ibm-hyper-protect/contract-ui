@@ -38,7 +38,8 @@ test('certificate uploads accept PEM file extensions and enforce 10 KB', () => {
 
 test('pasted YAML cannot bypass empty content and byte size checks', () => {
   assert.match(validateSubmissionYaml(' \n\t '), /Add YAML/);
-  assert.equal(validateSubmissionYaml('workload:\n  name: café\n'), '');
+  assert.equal(validateSubmissionYaml('type: workload\ncompose:\n  archive: YWJjZA==\n# café\n'), '');
+  assert.match(validateSubmissionYaml('workload:\n  name: café\n'), /type: workload|complete contract/);
   assert.match(validateSubmissionYaml('é'.repeat(FILE_SIZE_LIMITS.WORKLOAD / 2 + 1)), /50 MB/);
 });
 

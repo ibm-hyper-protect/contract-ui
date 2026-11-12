@@ -1,0 +1,61 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="layer-stack" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="layer-stack-title layer-stack-desc">
+  <title id="layer-stack-title">Ebenenstapel</title>
+  <desc id="layer-stack-desc">Three outlined isometric contract layers gently separate and reunite in a continuous loop. Decorative indeterminate section processing; separation or reunion does not indicate completion.</desc>
+  <style>
+#layer-stack { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #layer-stack { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#layer-stack[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#layer-stack[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.layer-stack-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.layer-stack-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.layer-stack-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.layer-stack-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.layer-stack-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.layer-stack-blue { fill:var(--blue); }
+.layer-stack-muted { fill:var(--muted-blue); }
+.layer-stack-soft { fill:var(--soft); }
+.layer-stack-neutral { fill:var(--line); }
+.layer-stack-faint { fill:var(--faint); }
+#layer-stack[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #layer-stack * { animation:none!important; }
+}
+
+.layer-stack-upper { animation:layers-upper 5.2s cubic-bezier(.4,0,.2,1) infinite; }
+.layer-stack-middle { animation:layers-middle 5.2s cubic-bezier(.4,0,.2,1) infinite; }
+.layer-stack-lower { animation:layers-lower 5.2s cubic-bezier(.4,0,.2,1) infinite; }
+.layer-stack-edge { animation:layers-edge 5.2s ease-in-out infinite; }
+@keyframes layers-upper { 0%,100% { transform:translateY(0); } 32%,56% { transform:translateY(-9px); } 86% { transform:translateY(0); } }
+@keyframes layers-middle { 0%,100% { transform:translateY(0); } 36%,60% { transform:translateY(-2px); } 90% { transform:translateY(0); } }
+@keyframes layers-lower { 0%,100% { transform:translateY(0); } 40%,64% { transform:translateY(5px); } 94% { transform:translateY(0); } }
+@keyframes layers-edge { 0%,100% { opacity:.32; } 34%,62% { opacity:1; } 90% { opacity:.32; } }
+</style>
+
+<path class="layer-stack-hairline" d="M72 56v76m176-76v76M160 20v140"/>
+<g class="layer-stack-lower"><path class="layer-stack-outline" d="M160 68l88 44-88 44-88-44z"/><path class="layer-stack-accent layer-stack-edge" d="M72 112l88 44 88-44"/></g>
+<g class="layer-stack-middle"><path class="layer-stack-outline" d="M160 47l88 44-88 44-88-44z"/><path class="layer-stack-track" d="M72 91l88 44 88-44"/><path class="layer-stack-accent layer-stack-edge" d="M132 121l28 14 28-14"/></g>
+<g class="layer-stack-upper"><path class="layer-stack-outline" d="M160 26l88 44-88 44-88-44z"/><path class="layer-stack-soft" d="M160 45l50 25-50 25-50-25z"/><path class="layer-stack-detail" d="M146 57l35 17m-47-11l35 17m-47-11l22 11"/><path class="layer-stack-accent layer-stack-edge" d="M72 70l88 44 88-44"/></g>
+
+</svg>

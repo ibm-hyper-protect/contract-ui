@@ -29,11 +29,14 @@ import {
   ChartLine,
   UserMultiple,
   DocumentTasks,
-  Help
+  Help,
+  Light,
+  Asleep
 } from '@carbon/icons-react';
 import DesktopTitleBar from './DesktopTitleBar';
 import FeatureHelp from './FeatureHelp';
 import { getRoleLabel, sortRolesByPriority } from '../utils/roles';
+import { useThemeStore } from '../store/themeStore';
 
 const AppShell = ({
   activeNav,
@@ -45,6 +48,8 @@ const AppShell = ({
   onRoleChange,
   children
 }) => {
+  const theme = useThemeStore(state => state.theme);
+  const toggleTheme = useThemeStore(state => state.toggleTheme);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isSideNavExpanded, setIsSideNavExpanded] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
@@ -201,6 +206,14 @@ const AppShell = ({
 
             {/* Pushes account menu to bottom */}
             <div className="app-shell-sidenav-spacer" />
+
+            <SideNavLink
+              renderIcon={theme === 'g100' ? Light : Asleep}
+              href="#theme"
+              onClick={(e) => { e.preventDefault(); toggleTheme(); }}
+            >
+              {theme === 'g100' ? 'Light mode' : 'Dark mode'}
+            </SideNavLink>
 
             <div className="app-shell-account-menu">
               <SideNavMenu renderIcon={Settings} title="Account">

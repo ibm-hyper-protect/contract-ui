@@ -1,0 +1,63 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="signature-trace" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="signature-trace-title signature-trace-desc">
+  <title id="signature-trace-title">Signaturlinie</title>
+  <desc id="signature-trace-desc">A purely illustrative signature line is repeatedly drawn on an outlined document. This is decorative signing activity, not a real signature, a cryptographic algorithm, or a successful verification indicator.</desc>
+  <style>
+#signature-trace { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #signature-trace { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#signature-trace[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#signature-trace[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.signature-trace-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.signature-trace-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.signature-trace-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.signature-trace-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.signature-trace-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.signature-trace-blue { fill:var(--blue); }
+.signature-trace-muted { fill:var(--muted-blue); }
+.signature-trace-soft { fill:var(--soft); }
+.signature-trace-neutral { fill:var(--line); }
+.signature-trace-faint { fill:var(--faint); }
+#signature-trace[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #signature-trace * { animation:none!important; }
+}
+
+.signature-trace-writing { stroke-dasharray:1; animation:signature-writing 5.8s cubic-bezier(.4,0,.2,1) infinite; }
+.signature-trace-tip { stroke-dasharray:.025 .975; animation:signature-tip 5.8s cubic-bezier(.4,0,.2,1) infinite; }
+.signature-trace-seal { animation:signature-seal 5.8s ease-in-out infinite; }
+@keyframes signature-writing { 0%,8% { stroke-dashoffset:1; opacity:0; } 14% { opacity:1; } 62%,76% { stroke-dashoffset:0; opacity:1; } 92%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes signature-tip { 0%,8% { stroke-dashoffset:1; opacity:0; } 14% { opacity:1; } 62% { stroke-dashoffset:0; opacity:1; } 72%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes signature-seal { 0%,100% { opacity:.25; } 50%,76% { opacity:1; } 92% { opacity:.25; } }
+</style>
+
+<rect class="signature-trace-outline" x="66" y="34" width="188" height="112"/>
+<path class="signature-trace-track" d="M82 51h70m-70 8h44M82 130h156"/>
+<rect class="signature-trace-soft" x="219" y="46" width="20" height="20"/>
+<path class="signature-trace-accent signature-trace-seal" d="M224 51h4v4h-4zm8 8h3v3h-3z"/>
+<path class="signature-trace-hairline" d="M90 110c10-18 23-43 24-30s-19 44-10 38 27-34 24-18-8 18 0 12 18-17 17-8 7 7 14 1 12-7 12 0 12 4 18-2 14-5 20-3 14 0 21-4"/>
+<path class="signature-trace-accent signature-trace-writing" pathLength="1" d="M90 110c10-18 23-43 24-30s-19 44-10 38 27-34 24-18-8 18 0 12 18-17 17-8 7 7 14 1 12-7 12 0 12 4 18-2 14-5 20-3 14 0 21-4"/>
+<path class="signature-trace-accent signature-trace-tip" pathLength="1" style="stroke-width:3.2" d="M90 110c10-18 23-43 24-30s-19 44-10 38 27-34 24-18-8 18 0 12 18-17 17-8 7 7 14 1 12-7 12 0 12 4 18-2 14-5 20-3 14 0 21-4"/>
+<path class="signature-trace-track" d="M82 138h26m112 0h18"/>
+
+</svg>

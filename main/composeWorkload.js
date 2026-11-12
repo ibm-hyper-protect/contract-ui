@@ -94,16 +94,25 @@ function inspectCompose(content) {
 }
 
 /** Build workload YAML without reading local references or changing secrets. */
-function prepareComposeWorkload({ content, volume } = {}) {
+function prepareComposeWorkload({ content, volumes = [] } = {}) {
   const summary = inspectCompose(content);
   const workload = { type: 'workload', compose: { archive: archiveCompose(content).toString('base64') } };
-  if (volume != null) {
+  if (!Array.isArray(volumes)) throw new Error('Persistent volumes must be a list.');
+  const names = new Set();
+  const mounts = new Set();
+  for (const volume of volumes) {
     if (!mapping(volume) || typeof volume.name !== 'string' || !/^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/.test(volume.name) ||
         typeof volume.mount !== 'string' || !/^\/(?:[a-zA-Z0-9_-]+\/?)+$/.test(volume.mount) ||
         typeof volume.seed !== 'string' || !volume.seed.trim() || volume.seed.length > 4096) {
       throw new Error('Provide a volume name, absolute guest mount path and workload seed.');
     }
-    workload.volumes = { [volume.name]: { mount: volume.mount, filesystem: 'ext4', seed: volume.seed } };
+    const mount = volume.mount.replace(/\/+$/, '');
+    if (names.has(volume.name)) throw new Error(`Volume name ${volume.name} is used more than once.`);
+    if (mounts.has(mount)) throw new Error(`Guest mount path ${mount} is used more than once.`);
+    names.add(volume.name);
+    mounts.add(mount);
+    workload.volumes ||= {};
+    workload.volumes[volume.name] = { mount, filesystem: 'ext4', seed: volume.seed };
   }
   return { plaintext: yaml.dump(workload, { noRefs: true, lineWidth: -1 }), ...summary };
 }

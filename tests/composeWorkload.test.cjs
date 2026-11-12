@@ -39,7 +39,7 @@ test('creates a readable ustar/gzip archive with the original UTF-8 Compose byte
 });
 
 test('optional volume preserves the exact seed and does not invent credentials', () => {
-  const result = prepareComposeWorkload({ content: minimal, volume: { name: 'data', mount: '/mnt/data', seed: ' existing seed ' } });
+  const result = prepareComposeWorkload({ content: minimal, volumes: [{ name: 'data', mount: '/mnt/data', seed: ' existing seed ' }] });
   assert.deepEqual(yaml.load(result.plaintext).volumes.data, { mount: '/mnt/data', filesystem: 'ext4', seed: ' existing seed ' });
 });
 
@@ -66,6 +66,30 @@ for (const [label, content] of [
 test('validates IPC inputs and volume paths', () => {
   for (const content of [null, {}, '', 'x'.repeat(1024 * 1024 + 1)]) assert.throws(() => prepareComposeWorkload({ content }));
   for (const volume of [{name: '__proto__', mount: '/mnt/data', seed: 'x'}, {name: 'data', mount: '../data', seed: 'x'}, {name: 'data', mount: '/', seed: 'x'}, {name: 'data', mount: '/data', seed: ' '}]) {
-    assert.throws(() => prepareComposeWorkload({ content: minimal, volume }));
+    assert.throws(() => prepareComposeWorkload({ content: minimal, volumes: [volume] }));
   }
+});
+
+test('multiple independent volumes preserve every name, mount and exact seed', () => {
+  const volumes = [
+    { name: 'database', mount: '/mnt/database', seed: ' database seed ' },
+    { name: 'documents', mount: '/mnt/documents/', seed: ' documents seed\n' },
+  ];
+  const result = yaml.load(prepareComposeWorkload({ content: minimal, volumes }).plaintext);
+  assert.deepEqual(result.volumes, {
+    database: { mount: '/mnt/database', filesystem: 'ext4', seed: ' database seed ' },
+    documents: { mount: '/mnt/documents', filesystem: 'ext4', seed: ' documents seed\n' },
+  });
+  assert.equal(volumes[1].mount, '/mnt/documents/');
+});
+
+test('rejects duplicate names, duplicate normalized mounts and malformed lists', () => {
+  const first = { name: 'data', mount: '/mnt/data', seed: 'unchanged' };
+  for (const volumes of [
+    [first, { ...first, mount: '/mnt/other' }],
+    [first, { ...first, name: 'other', mount: '/mnt/data/' }],
+    [first, { ...first, name: 'other', mount: '/mnt/other', seed: ' ' }],
+    [null], {}, null,
+  ]) assert.throws(() => prepareComposeWorkload({ content: minimal, volumes }));
+  assert.equal(yaml.load(prepareComposeWorkload({ content: minimal, volumes: [] }).plaintext).volumes, undefined);
 });

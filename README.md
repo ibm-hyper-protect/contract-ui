@@ -16,6 +16,10 @@ The IBM Confidential Computing Contract UI is an Electron-based desktop applicat
 - **Audit Trail**: Comprehensive logging of all contract operations and user actions
 - **Export & Verification**: Contract export with signature verification capabilities
 
+### Device keys
+
+Manage up to five active identity keys per account, identify this device’s signing key, transfer an encrypted backup to a trusted device, and revoke keys individually. Requires the multi-key Contract Manager backend. See the [device-key guide](docs/device-keys.md) for setup, recovery, and verification.
+
 ### Security Features
 - **Key Management**: Secure storage and rotation of cryptographic keys
 - **Digital Signatures**: Sign contract sections with RSA-4096 private keys
@@ -29,6 +33,24 @@ The IBM Confidential Computing Contract UI is an Electron-based desktop applicat
 - **Keyboard Shortcuts**: Comprehensive keyboard navigation
 - **Command Palette**: Quick access to application features
 - **Responsive Design**: Optimized for desktop environments
+- **Loading Feedback**: Context-specific animated SVGs with light/dark theme support, status text and reduced-motion alternatives; see [loading states](docs/loading-states.md)
+
+## Contract input validation
+
+Workload and environment forms accept raw section YAML or a complete plaintext contract containing both sections. Complete inputs are checked together before selecting the current section. Podman play imports support `v1` Pod and ConfigMap documents, including multiple documents, and wrap them as workload `play.resources`; a separate Podman template is available.
+
+Deploy the corresponding backend validation change before this UI: submission requires `POST /v2/contract-validate`. Unsupported backends show an upgrade message. Validation targets the embedded CCRT schema; it does not inspect TGZ archive contents or run workloads. Upload the real runtime encryption certificate, which must be the same for workload, environment and attestation. Built-in placeholder certificates have been removed.
+
+Focused parser checks: `node --test tests/contractInput.test.mjs`. Build: `npm run build`.
+
+## Runtime certificate selection
+
+In workload, environment and attestation forms, choose **Choose platform and version** to load the backend's embedded certificate catalog. Select the runtime platform, then the exact certificate version installed on that runtime. The UI loads the genuine PEM and displays its SHA-256 fingerprint and expiry. Changing platform, version, certificate source or server clears the previous choice; failed, expired or mismatched responses cannot enable submission. Custom PEM upload remains available if catalog loading fails.
+
+Deploy the companion certificate API after backend contract validation PR #13 and before releasing this UI, which builds on validation PR #133. Required endpoints: `GET /v2/encryption-certificates/versions` (with `platforms`) and `GET /v2/encryption-certificates/certificate?platform=…&version=…`. The pinned contract-go v2.37.0 catalog includes `ccrt`, `ccrv`, `ccco` and `hpvs`; it is not a live release feed. The current contract workflow supports CCRT only, so other catalog platforms are clearly marked and cannot enable submission. Upstream v3 uses different HPVS/release semantics; a library migration is a separate change.
+
+Use the same runtime certificate across workload, environment and attestation; the backend pins the build's recipient and revalidates it on submission. Checks: `node --test tests/*.test.mjs` and `npm run build`.
+
 
 ## Technology Stack
 
@@ -246,6 +268,8 @@ Configuration is defined in `vite.config.js`:
 
 ## Roles and Permissions
 
+Build progress offers **Continue as role** when your account has the next-step role and its build assignment. The build remains open. [Role handoff](docs/role-handoff.md).
+
 ### Admin
 - Full system access
 - User management
@@ -261,6 +285,8 @@ Use **Import Docker Compose** in Add workload to package a self-contained Compos
 - View build statistics
 
 ### Data Owner
+
+Submission forms include contextual examples explaining registry credentials, syslog certificates and persistent-volume seeds. [Input guidance](docs/contract-input-guidance.md).
 - Contribute data-related sections
 - Sign assigned sections
 - View assigned builds

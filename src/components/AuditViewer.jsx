@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import LoadingState from './LoadingState';
 import {
   Tag,
   Accordion,
@@ -7,7 +8,6 @@ import {
   InlineNotification,
   CodeSnippet,
   Tile,
-  Loading,
   Toggle,
   Modal
 } from '@carbon/react';
@@ -898,7 +898,7 @@ const AuditViewer = ({ buildId, userRole = 'VIEWER' }) => {
       </Modal>
 
       {loading ? (
-        <Loading description="Loading audit events..." withOverlay={false} />
+        <LoadingState variant="event-stream" description="Loading audit events…" size="page" />
       ) : auditEvents.length === 0 ? (
         <Tile className="empty-state">
           <WarningAlt size={48} />
