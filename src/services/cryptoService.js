@@ -116,6 +116,35 @@ class CryptoService {
     return window.electron.crypto.verify(hash, signature, publicKey);
   }
 
+  async exportIdentityBackup(userId, password) {
+    return window.electron.crypto.exportIdentityBackup(userId, password);
+  }
+
+  async importIdentityBackup(userId, password) {
+    return window.electron.crypto.importIdentityBackup(userId, password);
+  }
+
+  // Identity registration and signing return public metadata, never private keys.
+  async getIdentityKeyInfo(userId) {
+    return window.electron.crypto.getIdentityKeyInfo(userId);
+  }
+
+  async prepareIdentityKey(userId) {
+    return window.electron.crypto.prepareIdentityKey(userId);
+  }
+
+  async activateIdentityKey(userId, fingerprint) {
+    return window.electron.crypto.activateIdentityKey(userId, fingerprint);
+  }
+
+  async discardPendingIdentityKey(userId) {
+    return window.electron.crypto.discardPendingIdentityKey(userId);
+  }
+
+  async signIdentityHash(userId, hash, fingerprint = null) {
+    return window.electron.crypto.signIdentityHash(userId, hash, fingerprint);
+  }
+
   /**
    * Store private key securely
    * @param {string} userId - User ID

@@ -21,6 +21,7 @@ import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import { useConfigStore } from './store/configStore';
 import apiClient from './services/apiClient';
+import userKeyService from './services/userKeyService';
 import { getPrimaryRole, ROLE_LABELS } from './utils/roles';
 import { ProgressBar, Theme, Modal, InlineNotification } from '@carbon/react';
 import '@carbon/charts/styles.css';
@@ -68,7 +69,16 @@ function App() {
   const [pageCommand, setPageCommand] = useState(null);
   const [commandError, setCommandError] = useState(null);
   const commandSequence = useRef(0);
+  const theme = useThemeStore(state => state.theme);
   const toggleTheme = useThemeStore(state => state.toggleTheme);
+
+  // Keep <html> in sync so body and portals (modals) use the active Carbon theme
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-carbon-theme', theme);
+    root.classList.remove('cds--white', 'cds--g100');
+    root.classList.add(`cds--${theme}`);
+  }, [theme]);
   const handlePageCommandHandled = useCallback(id => {
     setPageCommand(current => current?.id === id ? null : current);
   }, []);
@@ -82,6 +92,7 @@ function App() {
   const [builds, setBuilds] = useState([]);
   const [selectedBuildId, setSelectedBuildId] = useState(null);
   const setupRequired = useAuthStore((state) => state.isSetupRequired());
+  const authUserId = useAuthStore(state => state.user?.id);
   const serverUrl = useConfigStore((state) => state.serverUrl);
   const hydrateConfig = useConfigStore((state) => state.hydrateConfig);
   const applyExternalConfig = useConfigStore((state) => state.applyExternalConfig);
@@ -150,6 +161,16 @@ function App() {
       apiClient.setBaseURL(serverUrl);
     }
   }, [serverUrl]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !authUserId) return;
+    const refreshKeys = () => userKeyService.refresh(authUserId).catch(error => {
+      console.error('Could not refresh device key status:', error.message);
+    });
+    refreshKeys();
+    window.addEventListener('focus', refreshKeys);
+    return () => window.removeEventListener('focus', refreshKeys);
+  }, [isAuthenticated, authUserId, serverUrl]);
 
   useEffect(() => {
     const onForcedLogout = () => {
@@ -457,57 +478,59 @@ function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <ToastProvider>
-        <AppShell
-           activeNav={activeNav}
-           setActiveNav={setActiveNav}
-           onLogout={handleLogout}
-           userRole={userRole}
-           userRoles={userRoles}
-           userEmail={userEmail}
-           onRoleChange={handleRoleChange}
-        >
-          <Modal
-            open={showWelcomeModal}
-            modalHeading={welcomeMessage}
-            primaryButtonText="Get Started"
-            onRequestSubmit={() => setShowWelcomeModal(false)}
-            onRequestClose={() => setShowWelcomeModal(false)}
+    <Theme theme={theme}>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AppShell
+             activeNav={activeNav}
+             setActiveNav={setActiveNav}
+             onLogout={handleLogout}
+             userRole={userRole}
+             userRoles={userRoles}
+             userEmail={userEmail}
+             onRoleChange={handleRoleChange}
           >
-            <p className="app-welcome-copy">
-              You have successfully authenticated into the IBM Confidential Computing Contract UI. Your cryptographic identity has been verified and active workflows are ready for review.
-            </p>
-          </Modal>
-          
-          <KeyboardShortcutsHelp
-            open={showShortcutsHelp}
-            onClose={() => setShowShortcutsHelp(false)}
-          />
-          
-          <CommandPalette
-            open={showCommandPalette}
-            onClose={() => setShowCommandPalette(false)}
-            userRole={userRole}
-            currentView={activeNav}
-            onAction={handleCommandPaletteAction}
-          />
-          
-          {commandError && (
-            <InlineNotification
-              kind="error"
-              title="Unable to open link"
-              subtitle={commandError}
-              lowContrast
-              onCloseButtonClick={() => setCommandError(null)}
+            <Modal
+              open={showWelcomeModal}
+              modalHeading={welcomeMessage}
+              primaryButtonText="Get Started"
+              onRequestSubmit={() => setShowWelcomeModal(false)}
+              onRequestClose={() => setShowWelcomeModal(false)}
+            >
+              <p className="app-welcome-copy">
+                You have successfully authenticated into the IBM Confidential Computing Contract UI. Your cryptographic identity has been verified and active workflows are ready for review.
+              </p>
+            </Modal>
+            
+            <KeyboardShortcutsHelp
+              open={showShortcutsHelp}
+              onClose={() => setShowShortcutsHelp(false)}
             />
-          )}
-          <PageCommandContext.Provider value={pageCommandContext}>
-            {activeView}
-          </PageCommandContext.Provider>
-        </AppShell>
-      </ToastProvider>
-    </ErrorBoundary>
+            
+            <CommandPalette
+              open={showCommandPalette}
+              onClose={() => setShowCommandPalette(false)}
+              userRole={userRole}
+              currentView={activeNav}
+              onAction={handleCommandPaletteAction}
+            />
+            
+            {commandError && (
+              <InlineNotification
+                kind="error"
+                title="Unable to open link"
+                subtitle={commandError}
+                lowContrast
+                onCloseButtonClick={() => setCommandError(null)}
+              />
+            )}
+            <PageCommandContext.Provider value={pageCommandContext}>
+              {activeView}
+            </PageCommandContext.Provider>
+          </AppShell>
+        </ToastProvider>
+      </ErrorBoundary>
+    </Theme>
   );
 }
 

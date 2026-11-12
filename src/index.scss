@@ -222,7 +222,8 @@ body {
   padding-right: 0.5rem;
 }
 
-.app-shell-no-drag {
+.app-shell-no-drag,
+.app-shell-no-drag * {
   -webkit-app-region: no-drag;
 }
 
@@ -345,6 +346,12 @@ body {
   height: calc(100vh - 3rem - var(--desktop-titlebar-height)) !important;
   top: calc(3rem + var(--desktop-titlebar-height)) !important;
   z-index: 8000;
+}
+
+// SideNav on layer-01 so it separates from the main content.
+// The right divider already comes from modern-theme.scss (.cds--side-nav box-shadow).
+.app-shell-sidenav.cds--side-nav {
+  background-color: var(--cds-layer-01);
 }
 
 .app-shell-sidenav-items {
