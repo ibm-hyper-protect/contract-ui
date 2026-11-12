@@ -33,6 +33,7 @@ Manage up to five active identity keys per account, identify this device’s sig
 - **Keyboard Shortcuts**: Comprehensive keyboard navigation
 - **Command Palette**: Quick access to application features
 - **Responsive Design**: Optimized for desktop environments
+- **Loading Feedback**: Context-specific animated SVGs with light/dark theme support, status text and reduced-motion alternatives; see [loading states](docs/loading-states.md)
 
 ## Contract input validation
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import LoadingState from './LoadingState';
 import { Modal } from '@carbon/react';
 import { WarningAlt, TrashCan, Renew, Locked } from '@carbon/icons-react';
 
@@ -72,6 +73,7 @@ const ConfirmDialog = ({
               {message}
             </p>
           )}
+          {loading && <LoadingState variant="task-routing" description="Processing request…" size="inline" />}
           {children}
         </div>
       </div>

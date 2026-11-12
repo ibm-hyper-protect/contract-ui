@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Tile, Layer, Stack, PasswordInput, Button, InlineLoading, InlineNotification } from '@carbon/react';
+import LoadingState from './LoadingState';
+import { Tile, Layer, Stack, PasswordInput, Button, InlineNotification } from '@carbon/react';
 import { Locked } from '@carbon/icons-react';
 import authService from '../services/authService';
 import { useAuthStore } from '../store/authStore';
@@ -123,7 +124,7 @@ const PasswordManager = ({ requiresUpdate = false }) => {
               <Button type="submit" kind="primary" disabled={isSubmitting || !currentPassword || !isPasswordValid(newPassword) || newPassword !== confirmPassword}>
                 Change password
               </Button>
-              {isSubmitting && <InlineLoading description="Updating password…" />}
+              {isSubmitting && <LoadingState variant="key-material" description="Updating password…" size="inline" />}
             </div>
           </Stack>
         </form>

@@ -1,0 +1,70 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="key-material" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="key-material-title key-material-desc">
+  <title id="key-material-title">Schlüsselmaterial</title>
+  <desc id="key-material-desc">An outlined certificate connects to a softly modulated four by four matrix. Decorative activity for working with key material; it does not assert encryption, successful validation, or key strength.</desc>
+  <style>
+#key-material { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #key-material { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#key-material[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#key-material[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.key-material-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.key-material-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.key-material-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.key-material-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.key-material-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.key-material-blue { fill:var(--blue); }
+.key-material-muted { fill:var(--muted-blue); }
+.key-material-soft { fill:var(--soft); }
+.key-material-neutral { fill:var(--line); }
+.key-material-faint { fill:var(--faint); }
+#key-material[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #key-material * { animation:none!important; }
+}
+
+.key-material-cell { fill:var(--blue); animation:key-cell 4.4s ease-in-out infinite; }
+.key-material-cell-0 { animation-delay:0s; } .key-material-cell-1 { animation-delay:-.24s; } .key-material-cell-2 { animation-delay:-.48s; }
+.key-material-cell-3 { animation-delay:-.72s; } .key-material-cell-4 { animation-delay:-.96s; } .key-material-cell-5 { animation-delay:-1.20s; }
+.key-material-link { stroke-dasharray:8 92; animation:key-link 4.4s cubic-bezier(.4,0,.2,1) infinite; }
+.key-material-signature { animation:key-signature 4.4s ease-in-out infinite; }
+@keyframes key-cell { 0%,100% { opacity:.15; } 28%,52% { opacity:.95; } 80% { opacity:.15; } }
+@keyframes key-link { 0%,5% { stroke-dashoffset:100; opacity:0; } 15% { opacity:1; } 63% { stroke-dashoffset:0; opacity:1; } 76%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes key-signature { 0%,100% { opacity:.32; } 30%,62% { opacity:1; } }
+</style>
+
+<path class="key-material-track" d="M144 88h42"/>
+<path class="key-material-accent key-material-link" d="M144 88h42"/>
+<path class="key-material-outline" d="M72 36h56l16 16v88H72z"/>
+<path class="key-material-track" d="M128 36v16h16"/>
+<circle class="key-material-detail" cx="100" cy="75" r="9"/>
+<path class="key-material-detail" d="M109 75h18v7h-5v-4h-5v4h-5"/>
+<circle class="key-material-blue key-material-signature" cx="97" cy="75" r="2"/>
+<path class="key-material-track" d="M88 101h40m-40 8h28"/>
+<path class="key-material-accent key-material-signature" d="M88 125h24"/>
+<rect class="key-material-soft" x="186" y="56" width="64" height="64"/>
+<path class="key-material-track" d="M186 68V56h12m40 0h12v12m0 40v12h-12m-40 0h-12v-12"/>
+<rect class="key-material-cell key-material-cell-0" x="194" y="64" width="6" height="6"/><rect class="key-material-cell key-material-cell-1" x="208" y="64" width="6" height="6"/><rect class="key-material-cell key-material-cell-2" x="222" y="64" width="6" height="6"/><rect class="key-material-cell key-material-cell-3" x="236" y="64" width="6" height="6"/><rect class="key-material-cell key-material-cell-3" x="194" y="78" width="6" height="6"/><rect class="key-material-cell key-material-cell-4" x="208" y="78" width="6" height="6"/><rect class="key-material-cell key-material-cell-5" x="222" y="78" width="6" height="6"/><rect class="key-material-cell key-material-cell-0" x="236" y="78" width="6" height="6"/><rect class="key-material-cell key-material-cell-0" x="194" y="92" width="6" height="6"/><rect class="key-material-cell key-material-cell-1" x="208" y="92" width="6" height="6"/><rect class="key-material-cell key-material-cell-2" x="222" y="92" width="6" height="6"/><rect class="key-material-cell key-material-cell-3" x="236" y="92" width="6" height="6"/><rect class="key-material-cell key-material-cell-3" x="194" y="106" width="6" height="6"/><rect class="key-material-cell key-material-cell-4" x="208" y="106" width="6" height="6"/><rect class="key-material-cell key-material-cell-5" x="222" y="106" width="6" height="6"/><rect class="key-material-cell key-material-cell-0" x="236" y="106" width="6" height="6"/>
+<path class="key-material-hairline" d="M190 134h56M160 38v10m-5-5h10M160 128v10m-5-5h10"/>
+
+</svg>

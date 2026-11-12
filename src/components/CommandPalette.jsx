@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
-import { Modal, Search, Tag } from '@carbon/react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, useId } from 'react';
+import { Modal, Search } from '@carbon/react';
 import {
   Home,
   Catalog,
@@ -15,7 +15,9 @@ import {
   Keyboard,
   Book,
   Email,
-  UserMultiple
+  UserMultiple,
+  Return,
+  SearchLocate
 } from '@carbon/icons-react';
 
 /**
@@ -35,6 +37,9 @@ const CommandPalette = ({
   const [recentActions, setRecentActions] = useState([]);
   const pendingAction = useRef(null);
   const launcherRef = useRef(null);
+  const resultsRef = useRef(null);
+  const paletteId = useId();
+  const listId = `${paletteId}-commands`;
 
   useLayoutEffect(() => {
     if (open) launcherRef.current = document.activeElement;
@@ -218,13 +223,13 @@ const CommandPalette = ({
     });
   }, [userRole, currentView, onAction]);
 
-  // Fuzzy search implementation
+  // Search the commands available to this role and page.
   const filteredActions = useMemo(() => {
     if (!searchTerm.trim()) {
       return allActions;
     }
 
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = searchTerm.trim().toLowerCase();
     return allActions.filter(action => {
       const labelMatch = action.label.toLowerCase().includes(searchLower);
       const keywordsMatch = action.keywords?.some(keyword => 
@@ -275,20 +280,24 @@ const CommandPalette = ({
     if (!open) return;
 
     const handleKeyDown = (e) => {
+      if (e.isComposing) return;
+      const fromSearch = e.target.matches?.('.command-palette__search input');
       const totalActions = displayedActions.length;
 
       switch (e.key) {
         case 'ArrowDown':
+          if (!fromSearch) return;
           e.preventDefault();
           setSelectedIndex(prev => Math.max(0, Math.min(prev + 1, totalActions - 1)));
           break;
         case 'ArrowUp':
+          if (!fromSearch) return;
           e.preventDefault();
           setSelectedIndex(prev => Math.max(prev - 1, 0));
           break;
         case 'Enter':
-          // Focused buttons keep their native Enter behavior.
-          if (!e.target.closest?.('.command-palette__search')) return;
+          // Close and clear buttons keep their native Enter behavior.
+          if (!fromSearch) return;
           e.preventDefault();
           if (displayedActions[activeIndex]) {
             executeAction(displayedActions[activeIndex]);
@@ -309,6 +318,12 @@ const CommandPalette = ({
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [open, displayedActions, activeIndex, executeAction, onClose]);
 
+  // Keep the active option visible while keyboard focus stays in the search.
+  useEffect(() => {
+    if (!open) return;
+    resultsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, activeIndex, searchTerm]);
+
   // Let the palette close and restore focus before opening another dialog.
   useEffect(() => {
     if (open || !pendingAction.current) return;
@@ -326,21 +341,45 @@ const CommandPalette = ({
     }
   }, [open]);
 
+  const renderAction = (action) => {
+    const index = displayedActions.indexOf(action);
+    return (
+      <CommandPaletteItem
+        key={action.id}
+        id={`${paletteId}-${action.id}`}
+        action={action}
+        isSelected={activeIndex === index}
+        isCurrent={action.id === `nav-${currentView?.toLowerCase()}`}
+        onSelect={() => setSelectedIndex(index)}
+        onClick={() => executeAction(action)}
+      />
+    );
+  };
+
   return (
     <Modal
       open={open}
       onRequestClose={onClose}
       passiveModal
-      aria-label="Command palette"
+      modalHeading="Command palette"
       launcherButtonRef={pendingAction.current ? undefined : launcherRef}
       className="command-palette"
       size="md"
     >
       <div className="command-palette__container">
+        <p className="command-palette__description">Find a page or run an action.</p>
         <div className="command-palette__search">
           <Search
             data-modal-primary-focus
-            placeholder="Type a command or search..."
+            id={`${paletteId}-search`}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-activedescendant={open && displayedActions[activeIndex]
+              ? `${paletteId}-${displayedActions[activeIndex].id}`
+              : undefined}
+            placeholder="Search commands…"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -352,83 +391,69 @@ const CommandPalette = ({
           />
         </div>
 
-        <div className="command-palette__results">
-          {visibleRecentActions.length > 0 && (
-            <div className="command-palette__section">
-              <h4 className="command-palette__section-title">Recent</h4>
-              <div className="command-palette__items">
-                {visibleRecentActions.map((action, index) => (
-                  <CommandPaletteItem
-                    key={action.id}
-                    action={action}
-                    isSelected={activeIndex === index}
-                    onClick={() => executeAction(action)}
-                  />
-                ))}
+        <div className="command-palette__results" ref={resultsRef}>
+          <div id={listId} role="listbox" aria-label="Available commands">
+            {visibleRecentActions.length > 0 && (
+              <div className="command-palette__section" role="group" aria-labelledby={`${paletteId}-recent`}>
+                <h3 id={`${paletteId}-recent`} className="command-palette__section-title">Recent</h3>
+                {visibleRecentActions.map(renderAction)}
               </div>
-            </div>
-          )}
+            )}
 
-          {Object.entries(groupedActions).map(([category, actions]) => (
-            <div key={category} className="command-palette__section">
-              <h4 className="command-palette__section-title">{category}</h4>
-              <div className="command-palette__items">
-                {actions.map((action) => {
-                  const globalIndex = displayedActions.indexOf(action);
-                  return (
-                    <CommandPaletteItem
-                      key={action.id}
-                      action={action}
-                      isSelected={activeIndex === globalIndex}
-                      onClick={() => executeAction(action)}
-                    />
-                  );
-                })}
+            {Object.entries(groupedActions).map(([category, actions]) => (
+              <div key={category} className="command-palette__section" role="group" aria-labelledby={`${paletteId}-${category.replaceAll(' ', '-')}`}>
+                <h3 id={`${paletteId}-${category.replaceAll(' ', '-')}`} className="command-palette__section-title">
+                  {category.replace('Actions', 'actions')}
+                </h3>
+                {actions.map(renderAction)}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           {filteredActions.length === 0 && (
             <div className="command-palette__empty">
-              <p>No commands found for "{searchTerm}"</p>
+              <SearchLocate size={32} aria-hidden="true" />
+              <h3>No matching commands</h3>
+              <p>Try a page name or an action, such as “build”.</p>
             </div>
           )}
         </div>
 
+        <p className="command-palette__announcement" role="status">
+          {open ? `${displayedActions.length} ${displayedActions.length === 1 ? 'command' : 'commands'} available.` : ''}
+        </p>
         <div className="command-palette__footer">
-          <div className="command-palette__hints">
-            <span><Tag size="sm">↑↓</Tag> Navigate</span>
-            <span><Tag size="sm">Enter</Tag> Execute</span>
-            <span><Tag size="sm">Esc</Tag> Close</span>
-          </div>
+          <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+          <span><kbd>↵</kbd> Run command</span>
+          <span><kbd>Esc</kbd> Close</span>
         </div>
       </div>
     </Modal>
   );
 };
 
-/**
- * Command Palette Item Component
- */
-const CommandPaletteItem = ({ action, isSelected, onClick }) => {
+const CommandPaletteItem = ({ id, action, isSelected, isCurrent, onSelect, onClick }) => {
   const Icon = action.icon;
 
   return (
     <button
-      className={`command-palette__item ${isSelected ? 'command-palette__item--selected' : ''}`}
-      aria-label={action.label}
+      id={id}
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={-1}
+      className="command-palette__item"
+      aria-label={`${action.label}${isCurrent ? ', current page' : ''}`}
+      onMouseDown={(event) => {
+        if (event.button === 0) event.preventDefault();
+      }}
+      onMouseMove={onSelect}
       onClick={onClick}
       type="button"
     >
-      <div className="command-palette__item-icon">
-        {Icon && <Icon size={20} />}
-      </div>
-      <div className="command-palette__item-content">
-        <span className="command-palette__item-label">{action.label}</span>
-        {action.category && (
-          <span className="command-palette__item-category">{action.category}</span>
-        )}
-      </div>
+      <Icon size={16} className="command-palette__item-icon" aria-hidden="true" />
+      <span className="command-palette__item-label">{action.label}</span>
+      {isCurrent && <span className="command-palette__current">Current page</span>}
+      <Return size={16} className="command-palette__return" aria-hidden="true" />
     </button>
   );
 };
