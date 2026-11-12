@@ -259,6 +259,8 @@ Configuration is defined in `vite.config.js`:
 
 ## Roles and Permissions
 
+Build progress offers **Continue as role** when your account has the next-step role and its build assignment. The build remains open. [Role handoff](docs/role-handoff.md).
+
 ### Admin
 - Full system access
 - User management
