@@ -11,8 +11,6 @@ import {
   Modal,
   RadioButton,
   RadioButtonGroup,
-  Select,
-  SelectItem,
   Tag,
   TextArea,
   Tile,
@@ -20,7 +18,7 @@ import {
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
-import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
+import RuntimeCertificateSelect from './RuntimeCertificateSelect';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
 import LoadingState from './LoadingState';
@@ -31,8 +29,6 @@ import {
 } from '../utils/submissionForm';
 import AuditorSection from './AuditorSection';
 import { prepareContractInput, PODMAN_WORKLOAD_TEMPLATE } from '../utils/contractInput';
-
-const CERTIFICATE_PLATFORMS = PLATFORMS.filter((platform) => getCertsByPlatform(platform.id).length);
 
 const ROLE_CONFIG = {
   SOLUTION_PROVIDER: {
@@ -83,8 +79,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const [yamlError, setYamlError] = useState('');
   const [certificateError, setCertificateError] = useState('');
   const [certSource, setCertSource] = useState('custom');
-  const [platformId, setPlatformId] = useState(CERTIFICATE_PLATFORMS[0]?.id || '');
-  const [certId, setCertId] = useState(getCertsByPlatform(CERTIFICATE_PLATFORMS[0]?.id)[0]?.id || '');
+  const [runtimeCertificate, setRuntimeCertificate] = useState(null);
   const [draft, setDraft] = useState(null);
   const [draftError, setDraftError] = useState('');
   const [reading, setReading] = useState(false);
@@ -143,9 +138,9 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const busy = submitting || reading || loadingTemplate || validating;
   const disabled = locked || busy;
   const activeCertificate =
-    certSource === 'custom' ? certificate.content : getCertById(certId)?.cert || '';
+    certSource === 'custom' ? certificate.content : runtimeCertificate?.certificate_pem || '';
   const certificateName =
-    certSource === 'custom' ? certificate.name : getCertById(certId)?.label || '';
+    certSource === 'custom' ? certificate.name : runtimeCertificate?.name || '';
   const hasYaml = !!yaml.content.trim();
   const hasCertificate = hasCertificateContent(activeCertificate);
   const ready = hasYaml && hasCertificate && !locked;
@@ -447,6 +442,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   valueSelected={certSource}
                   disabled={disabled}
                   onChange={(value) => {
+                    setRuntimeCertificate(null);
                     setCertSource(value);
                     setCertificateError('');
                   }}
@@ -459,15 +455,10 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   <RadioButton
                     id={`cert-builtin-${personaRole}`}
                     value="builtin"
-                    labelText="Use built-in certificate"
-                    disabled={disabled || !CERTIFICATE_PLATFORMS.length}
+                    labelText="Choose platform and version"
+                    disabled={disabled}
                   />
                 </RadioButtonGroup>
-                {!CERTIFICATE_PLATFORMS.length && (
-                  <p className="submission-form__help">
-                    Built-in certificates are unavailable. Upload the encryption certificate for your runtime.
-                  </p>
-                )}
                 {certSource === 'custom' ? (
                   <div className="submission-form__certificate">
                     <p className="submission-form__help">
@@ -495,39 +486,12 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                     )}
                   </div>
                 ) : (
-                  <div className="submission-form__certificate submission-form__selects">
-                    <Select
-                      id={`platform-${personaRole}`}
-                      labelText="Platform"
-                      value={platformId}
-                      disabled={disabled}
-                      onChange={(event) => {
-                        setPlatformId(event.target.value);
-                        setCertId(getCertsByPlatform(event.target.value)[0]?.id || '');
-                      }}
-                    >
-                      {CERTIFICATE_PLATFORMS.map(
-                        (platform) => (
-                          <SelectItem key={platform.id} value={platform.id} text={platform.label} />
-                        )
-                      )}
-                    </Select>
-                    <Select
-                      id={`certificate-${personaRole}`}
-                      labelText="Certificate"
-                      value={certId}
-                      disabled={disabled}
-                      onChange={(event) => setCertId(event.target.value)}
-                    >
-                      {getCertsByPlatform(platformId).map((cert) => (
-                        <SelectItem
-                          key={cert.id}
-                          value={cert.id}
-                          text={cert.version || cert.label}
-                        />
-                      ))}
-                    </Select>
-                  </div>
+                  <RuntimeCertificateSelect
+                    key={buildId}
+                    id={`runtime-certificate-${personaRole}`}
+                    disabled={disabled}
+                    onChange={setRuntimeCertificate}
+                  />
                 )}
                 {certificateError && (
                   <InlineNotification

@@ -8,8 +8,6 @@ import {
   PasswordInput,
   RadioButtonGroup,
   RadioButton,
-  Select,
-  SelectItem,
   FileUploader,
 } from '@carbon/react';
 import {
@@ -20,10 +18,8 @@ import buildService from '../services/buildService';
 import ConfirmDialog from './ConfirmDialog';
 import LoadingState from './LoadingState';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
-import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
+import RuntimeCertificateSelect from './RuntimeCertificateSelect';
 import { hasCertificateContent } from '../utils/submissionForm';
-
-const CERTIFICATE_PLATFORMS = PLATFORMS.filter((platform) => getCertsByPlatform(platform.id).length);
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
 const STATUS_TAG_TYPE = {
@@ -72,8 +68,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
   
   // Certificate source: 'builtin' | 'custom'
   const [certSource, setCertSource] = useState('custom');
-  const [selectedPlatformId, setSelectedPlatformId] = useState(CERTIFICATE_PLATFORMS[0]?.id || '');
-  const [selectedCertId, setSelectedCertId] = useState('');
+  const [runtimeCertificate, setRuntimeCertificate] = useState(null);
   const [customCertContent, setCustomCertContent] = useState('');
   const [customCertFileName, setCustomCertFileName] = useState('');
 
@@ -118,20 +113,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
       : 'Register signing and attestation keys using backend-native v2 endpoints.';
   const attestationStepLabel = showSigningCard ? 'Step 2' : 'Step 1';
   
-  // Get certificate options based on selected platform
-  const certOptions = getCertsByPlatform(selectedPlatformId);
-  
-  // Get active certificate content
-  const getActiveCertContent = () => {
-    if (certSource === 'custom') return customCertContent;
-    return getCertById(selectedCertId)?.cert || '';
-  };
-
-  // Set default cert when platform changes
-  useEffect(() => {
-    const certs = getCertsByPlatform(selectedPlatformId);
-    setSelectedCertId(certs.length > 0 ? certs[0].id : '');
-  }, [selectedPlatformId]);
+  const getActiveCertContent = () =>
+    certSource === 'custom' ? customCertContent : runtimeCertificate?.certificate_pem || '';
 
   const refreshBuildStatus = async () => {
     const build = await buildService.getBuild(buildId);
@@ -420,7 +403,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               <RadioButtonGroup
                 name="attestation-cert-source"
                 valueSelected={certSource}
-                onChange={(val) => setCertSource(val)}
+                onChange={(val) => { setRuntimeCertificate(null); setCertSource(val); }}
                 className="workflow-radio-group"
                 disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
               >
@@ -431,46 +414,19 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
                   disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
                 />
                 <RadioButton
-                  labelText="Use built-in certificate"
+                  labelText="Choose platform and version"
                   value="builtin"
                   id="attestation-cert-builtin"
-                  disabled={!CERTIFICATE_PLATFORMS.length || registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
+                  disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
                 />
               </RadioButtonGroup>
-              {!CERTIFICATE_PLATFORMS.length && (
-                <p className="workflow-step-copy">
-                  Built-in certificates are unavailable. Upload the encryption certificate for your runtime.
-                </p>
-              )}
-
               {certSource === 'builtin' ? (
-                <div className="workflow-form-row" style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                  <Select
-                    id="attestation-cert-platform"
-                    labelText="Platform"
-                    value={selectedPlatformId}
-                    onChange={(e) => setSelectedPlatformId(e.target.value)}
-                    className="workflow-select workflow-select--platform"
-                    disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
-                  >
-                    {CERTIFICATE_PLATFORMS.map(p => (
-                      <SelectItem key={p.id} value={p.id} text={p.label} />
-                    ))}
-                  </Select>
-
-                  <Select
-                    id="attestation-cert-version"
-                    labelText="Certificate"
-                    value={selectedCertId}
-                    onChange={(e) => setSelectedCertId(e.target.value)}
-                    className="workflow-select workflow-select--version"
-                    disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
-                  >
-                    {certOptions.map(c => (
-                      <SelectItem key={c.id} value={c.id} text={c.label} />
-                    ))}
-                  </Select>
-                </div>
+                <RuntimeCertificateSelect
+                  key={buildId}
+                  id="attestation-runtime-certificate"
+                  disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
+                  onChange={setRuntimeCertificate}
+                />
               ) : (
                 <div style={{ marginTop: '1rem' }}>
                   <FileUploader

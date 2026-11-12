@@ -258,7 +258,7 @@ class ApiClient {
    */
   async get(url, config = {}) {
     const controller = new AbortController();
-    const requestConfig = { ...config, signal: controller.signal };
+    const requestConfig = { ...config, signal: config.signal || controller.signal };
     
     try {
       const response = await this.client.get(url, requestConfig);
