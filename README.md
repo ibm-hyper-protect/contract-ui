@@ -34,6 +34,14 @@ Manage up to five active identity keys per account, identify this device’s sig
 - **Command Palette**: Quick access to application features
 - **Responsive Design**: Optimized for desktop environments
 
+## Contract input validation
+
+Workload and environment forms accept raw section YAML or a complete plaintext contract containing both sections. Complete inputs are checked together before selecting the current section. Podman play imports support `v1` Pod and ConfigMap documents, including multiple documents, and wrap them as workload `play.resources`; a separate Podman template is available.
+
+Deploy the corresponding backend validation change before this UI: submission requires `POST /v2/contract-validate`. Unsupported backends show an upgrade message. Validation targets the embedded CCRT schema; it does not inspect TGZ archive contents or run workloads. Upload the real runtime encryption certificate, which must be the same for workload, environment and attestation. Built-in placeholder certificates have been removed.
+
+Focused parser checks: `node --test tests/contractInput.test.mjs`. Build: `npm run build`.
+
 ## Technology Stack
 
 ### Frontend

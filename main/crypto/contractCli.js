@@ -14,7 +14,7 @@ class ContractCliBridge {
    * Encrypt a string section using contract-cli encrypt-string.
    * Used for workload, env, and attestation public key.
    * @param {string} plainText - Content to encrypt
-   * @param {string} encryptionCertPath - Path to HPCR encryption certificate
+   * @param {string} encryptionCertPath - Path to runtime encryption certificate
    * @returns {Promise<string>} - Encrypted string (hyper-protect-basic.xxx.yyy)
    */
   async encryptSection(plainText, encryptionCertPath) {
@@ -56,7 +56,7 @@ class ContractCliBridge {
   /**
    * Encrypt a file using contract-cli.
    * @param {string} inputPath - Path to input file
-   * @param {string} encryptionCertPath - Path to HPCR encryption certificate
+   * @param {string} encryptionCertPath - Path to runtime encryption certificate
    * @returns {Promise<string>} - Encrypted content
    */
   async encryptFile(inputPath, encryptionCertPath) {
@@ -93,7 +93,7 @@ attestationPublicKey: ${encryptedAttestationKey}
    */
   async saveCertToTempFile(certContent) {
     const tempDir = os.tmpdir();
-    const certPath = path.join(tempDir, `hpcr-cert-${Date.now()}.pem`);
+    const certPath = path.join(tempDir, `contract-cert-${Date.now()}.pem`);
     await fs.writeFile(certPath, certContent, 'utf8');
     return certPath;
   }

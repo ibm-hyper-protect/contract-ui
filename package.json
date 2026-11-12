@@ -58,6 +58,7 @@
     "@carbon/react": "^1.120.0",
     "axios": "^1.21.1",
     "d3": "^7.9.2",
+    "js-yaml": "^4.3.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",

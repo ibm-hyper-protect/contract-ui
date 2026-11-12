@@ -14,7 +14,7 @@ class SectionService {
    * @param {string} buildId - Build ID
    * @param {string} personaRole - Persona role (workload_owner, data_owner, auditor)
    * @param {string} plaintext - Section content in plaintext
-   * @param {string} certContent - HPCR encryption certificate content
+   * @param {string} certContent - runtime encryption certificate content
    * @returns {Promise<Object>}
    */
   async submitSection(buildId, personaRole, plaintext, certContent) {
@@ -37,7 +37,7 @@ class SectionService {
       throw new Error(validation.reason);
     }
 
-    // Encrypt section with HPCR certificate
+    // Encrypt section with runtime encryption certificate
     const encryptedPayload = await cryptoService.encryptSection(plaintext, certContent);
 
     // Compute hash of encrypted payload
@@ -134,7 +134,7 @@ class SectionService {
    * Prepare section for submission (encrypt only, don't submit)
    * Useful for preview or validation
    * @param {string} plaintext - Section content
-   * @param {string} certContent - HPCR encryption certificate
+   * @param {string} certContent - runtime encryption certificate
    * @returns {Promise<string>} - Encrypted payload
    */
   async prepareSection(plaintext, certContent) {
