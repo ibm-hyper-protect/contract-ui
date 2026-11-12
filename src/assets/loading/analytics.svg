@@ -1,0 +1,67 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="analytics" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="analytics-title analytics-desc">
+  <title id="analytics-title">Datenaufbau</title>
+  <desc id="analytics-desc">Three metric tiles and six chart bars build and settle in a continuous staggered rhythm. Decorative analytics loading illustration, with no numerical data or progress percentage.</desc>
+  <style>
+#analytics { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #analytics { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#analytics[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#analytics[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.analytics-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.analytics-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.analytics-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.analytics-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.analytics-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.analytics-blue { fill:var(--blue); }
+.analytics-muted { fill:var(--muted-blue); }
+.analytics-soft { fill:var(--soft); }
+.analytics-neutral { fill:var(--line); }
+.analytics-faint { fill:var(--faint); }
+#analytics[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #analytics * { animation:none!important; }
+}
+
+.analytics-bar { fill:var(--blue); transform-box:fill-box; transform-origin:50% 100%; animation:analytics-bar 4.8s cubic-bezier(.4,0,.2,1) infinite; }
+.analytics-bar-0 { animation-delay:-.40s; } .analytics-bar-1 { animation-delay:-.24s; } .analytics-bar-2 { animation-delay:-.08s; }
+.analytics-bar-3 { animation-delay:.08s; } .analytics-bar-4 { animation-delay:.24s; } .analytics-bar-5 { animation-delay:.40s; }
+.analytics-bar-1,.analytics-bar-3,.analytics-bar-5 { fill:var(--muted-blue); }
+.analytics-metric-1 { animation:analytics-metric 4.8s ease-in-out infinite; }
+.analytics-metric-2 { animation:analytics-metric 4.8s .2s ease-in-out infinite; }
+.analytics-metric-3 { animation:analytics-metric 4.8s .4s ease-in-out infinite; }
+@keyframes analytics-bar { 0%,100% { transform:scaleY(.42); opacity:.45; } 28%,57% { transform:scaleY(1); opacity:1; } 82% { transform:scaleY(.42); opacity:.45; } }
+@keyframes analytics-metric { 0%,100% { opacity:.25; } 28%,58% { opacity:1; } 82% { opacity:.25; } }
+</style>
+
+<rect class="analytics-outline" x="54" y="32" width="64" height="34"/>
+<rect class="analytics-outline" x="128" y="32" width="64" height="34"/>
+<rect class="analytics-outline" x="202" y="32" width="64" height="34"/>
+<path class="analytics-hairline" d="M54 86h212M54 104h212M54 122h212M54 140h212M54 80v60"/>
+<path class="analytics-track" d="M65 43h22m52 0h22m52 0h22"/>
+<path class="analytics-accent analytics-metric-1" d="M65 55h37"/>
+<path class="analytics-accent analytics-metric-2" d="M139 55h27"/>
+<path class="analytics-accent analytics-metric-3" d="M213 55h36"/>
+<rect class="analytics-bar analytics-bar-0" x="70" y="118" width="16" height="22"/><rect class="analytics-bar analytics-bar-1" x="104" y="102" width="16" height="38"/><rect class="analytics-bar analytics-bar-2" x="138" y="110" width="16" height="30"/><rect class="analytics-bar analytics-bar-3" x="172" y="88" width="16" height="52"/><rect class="analytics-bar analytics-bar-4" x="206" y="98" width="16" height="42"/><rect class="analytics-bar analytics-bar-5" x="240" y="78" width="16" height="62"/>
+
+</svg>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import LoadingState from '../components/LoadingState';
 import PageHeader from '../components/PageHeader';
 import {
   Grid,
@@ -302,6 +303,8 @@ const Home = ({ userEmail, userRole, onNavigate, onSelectBuild }) => {
           </Button>
         )}
       />
+
+      {loading && <LoadingState variant="analytics" description="Loading your build overview…" size="inline" />}
 
       <h2 className="app-section-title">Account Overview</h2>
 

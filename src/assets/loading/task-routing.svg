@@ -1,0 +1,76 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="task-routing" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="task-routing-title task-routing-desc">
+  <title id="task-routing-title">Datenwege</title>
+  <desc id="task-routing-desc">Blue packets flow through a central node and three fixed branches in a staggered loop. Decorative activity for loading related resources; no actual network topology or progress is implied.</desc>
+  <style>
+#task-routing { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #task-routing { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#task-routing[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#task-routing[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.task-routing-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.task-routing-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.task-routing-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.task-routing-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.task-routing-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.task-routing-blue { fill:var(--blue); }
+.task-routing-muted { fill:var(--muted-blue); }
+.task-routing-soft { fill:var(--soft); }
+.task-routing-neutral { fill:var(--line); }
+.task-routing-faint { fill:var(--faint); }
+#task-routing[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #task-routing * { animation:none!important; }
+}
+
+.task-routing-incoming { stroke-dasharray:10 110; animation:routing-in 5.6s cubic-bezier(.4,0,.2,1) infinite; }
+.task-routing-branch { stroke-dasharray:10 190; animation:routing-branch 5.6s cubic-bezier(.4,0,.2,1) infinite; }
+.task-routing-branch-2 { animation-delay:.20s; } .task-routing-branch-3 { animation-delay:.40s; }
+.task-routing-hub { animation:routing-hub 5.6s ease-in-out infinite; }
+.task-routing-port { animation:routing-port 5.6s ease-in-out infinite; }
+.task-routing-port-2 { animation-delay:.2s; } .task-routing-port-3 { animation-delay:.4s; }
+@keyframes routing-in { 0%,5% { stroke-dashoffset:120; opacity:0; } 12% { opacity:1; } 38% { stroke-dashoffset:0; opacity:1; } 48%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes routing-branch { 0%,25% { stroke-dashoffset:200; opacity:0; } 34% { opacity:1; } 77% { stroke-dashoffset:0; opacity:1; } 89%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes routing-hub { 0%,100% { opacity:.3; } 28%,56% { opacity:1; } 86% { opacity:.3; } }
+@keyframes routing-port { 0%,100% { opacity:.2; } 65%,79% { opacity:1; } 96% { opacity:.2; } }
+</style>
+
+<path class="task-routing-track" d="M72 88h64M184 88h28V44h36m-64 44h64m-64 0h28v44h36"/>
+<path class="task-routing-accent task-routing-incoming" d="M72 88h64"/>
+<path class="task-routing-accent task-routing-branch" d="M184 88h28V44h36"/>
+<path class="task-routing-accent task-routing-branch task-routing-branch-2" d="M184 88h64"/>
+<path class="task-routing-accent task-routing-branch task-routing-branch-3" d="M184 88h28v44h36"/>
+<rect class="task-routing-outline" x="40" y="72" width="32" height="32"/>
+<rect class="task-routing-outline" x="136" y="64" width="48" height="48"/>
+<rect class="task-routing-soft" x="144" y="72" width="32" height="32"/>
+<path class="task-routing-detail" d="M48 82h16m-16 6h11m-11 6h16"/>
+<path class="task-routing-accent task-routing-hub" d="M151 79v18m9-18v18m9-18v18"/>
+<rect class="task-routing-outline" x="248" y="32" width="32" height="24"/>
+<rect class="task-routing-outline" x="248" y="76" width="32" height="24"/>
+<rect class="task-routing-outline" x="248" y="120" width="32" height="24"/>
+<path class="task-routing-accent task-routing-port" d="M257 44h14"/>
+<path class="task-routing-accent task-routing-port task-routing-port-2" d="M257 88h14"/>
+<path class="task-routing-accent task-routing-port task-routing-port-3" d="M257 132h14"/>
+<path class="task-routing-hairline" d="M120 56h8m-4-4v8M120 120h8m-4-4v8"/>
+
+</svg>

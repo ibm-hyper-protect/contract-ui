@@ -17,6 +17,7 @@ import {
 } from '@carbon/icons-react';
 import buildService from '../services/buildService';
 import ConfirmDialog from './ConfirmDialog';
+import LoadingState from './LoadingState';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 import { hasCertificateContent } from '../utils/submissionForm';
@@ -319,6 +320,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
         />
       )}
 
+      {loadingStatus && <LoadingState variant="key-material" description="Loading build key status…" size="inline" />}
+
       {!loadingStatus && (
         <Tile className="workflow-complete-tile">
           <div className="workflow-complete-tile__row">
@@ -369,6 +372,9 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               >
                 {registeringSigning ? 'Registering...' : (isSigningRegistered ? 'Signing Key Registered' : 'Register Signing Key')}
               </Button>
+              {registeringSigning && (
+                <LoadingState variant="signature-trace" description="Registering signing key…" size="inline" />
+              )}
             </div>
           </div>
         )}
@@ -493,6 +499,9 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
             >
               {registeringAttestation ? 'Registering...' : (isAttestationRegistered ? 'Attestation Key Registered' : 'Register Attestation Key')}
             </Button>
+            {registeringAttestation && (
+              <LoadingState variant="key-material" description="Registering attestation key…" size="inline" />
+            )}
           </div>
         )}
       </div>

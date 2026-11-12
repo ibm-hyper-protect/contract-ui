@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import LoadingState from './components/LoadingState';
 import AppShell from './components/AppShell';
 import Home from './views/Home';
 import BuildManagement from './views/BuildManagement';
@@ -23,7 +24,7 @@ import { useConfigStore } from './store/configStore';
 import apiClient from './services/apiClient';
 import userKeyService from './services/userKeyService';
 import { getPrimaryRole, ROLE_LABELS } from './utils/roles';
-import { ProgressBar, Theme, Modal, InlineNotification } from '@carbon/react';
+import { Theme, Modal, InlineNotification } from '@carbon/react';
 import '@carbon/charts/styles.css';
 
 const ROLE_PERSONA_MAP = {
@@ -60,7 +61,6 @@ const getSafeStoredRoles = (rolesJson, role) => {
 
 function App() {
   const [isBooting, setIsBooting] = useState(true);
-  const [bootProgress, setBootProgress] = useState(0);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -90,10 +90,12 @@ function App() {
   const [activePersona, setActivePersona] = useState(PERSONAS.ADMIN);
   const [activeNav, setActiveNav] = useState('HOME'); // Default to home for all users
   const [builds, setBuilds] = useState([]);
+  const [buildsLoaded, setBuildsLoaded] = useState(false);
   const [selectedBuildId, setSelectedBuildId] = useState(null);
   const setupRequired = useAuthStore((state) => state.isSetupRequired());
   const authUserId = useAuthStore(state => state.user?.id);
   const serverUrl = useConfigStore((state) => state.serverUrl);
+  const configLoaded = useConfigStore((state) => state.configLoaded);
   const hydrateConfig = useConfigStore((state) => state.hydrateConfig);
   const applyExternalConfig = useConfigStore((state) => state.applyExternalConfig);
 
@@ -105,6 +107,7 @@ function App() {
     setActivePersona(PERSONAS.ADMIN);
     setActiveNav('HOME');
     setBuilds([]);
+    setBuildsLoaded(false);
     setSelectedBuildId(null);
     setShowWelcomeModal(false);
     setShowCommandPalette(false);
@@ -217,11 +220,13 @@ function App() {
   const loadBuilds = useCallback(async () => {
     if (setupRequired) {
       setBuilds([]);
+      setBuildsLoaded(true);
       return;
     }
     const token = useAuthStore.getState().token;
     if (!token) {
       setBuilds([]);
+      setBuildsLoaded(true);
       return;
     }
     try {
@@ -230,6 +235,8 @@ function App() {
     } catch (error) {
       console.error('Failed to load builds:', error);
       setBuilds([]);
+    } finally {
+      setBuildsLoaded(true);
     }
   }, [setupRequired]);
 
@@ -247,23 +254,8 @@ function App() {
   }, [setupRequired, activeNav]);
 
   useEffect(() => {
-    if (!isBooting) return;
-    
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 15) + 5;
-      if (progress > 100) progress = 100;
-      
-      setBootProgress(progress);
-
-      if (progress === 100) {
-        clearInterval(interval);
-        setTimeout(() => setIsBooting(false), 500); 
-      }
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [isBooting]);
+    if (configLoaded) setIsBooting(false);
+  }, [configLoaded]);
 
   const advanceBuildState = useCallback((buildId, newState) => {
     setBuilds(prev => prev.map(b => 
@@ -346,12 +338,13 @@ function App() {
             />
           );
        }
-       return <BuildManagement builds={builds} onSelectBuild={handleSelectBuild} userRole={userRole} onBuildCreated={loadBuilds} />;
+       return <BuildManagement builds={builds} loading={!buildsLoaded} onSelectBuild={handleSelectBuild} userRole={userRole} onBuildCreated={loadBuilds} />;
     }
     
     // Default to 404 page for unknown routes
     return <NotFound onNavigate={setActiveNav} />;
   }, [
+    buildsLoaded,
     activeNav,
     userEmail,
     userRole,
@@ -466,7 +459,7 @@ function App() {
         <div className="app-boot-screen">
           <h1 className="app-boot-screen__title">IBM <br /> Confidential Computing Contract UI</h1>
           <div className="app-boot-screen__progress">
-            <ProgressBar label="Loading" value={bootProgress} max={100} />
+            <LoadingState variant="connection" description="Loading application settings…" />
           </div>
         </div>
       </Theme>

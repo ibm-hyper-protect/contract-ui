@@ -22,6 +22,7 @@ import buildService from '../services/buildService';
 import { PLATFORMS, getCertsByPlatform, getCertById } from '../data/builtinCerts';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
+import LoadingState from './LoadingState';
 import {
   hasCertificateContent,
   validateSubmissionFile,
@@ -281,7 +282,8 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   : 'Waiting for previous stage'}
         </Tag>
       </header>
-      {loading && <InlineLoading description="Loading submission status…" />}
+      {loading && <LoadingState variant="layer-stack" description="Loading submission status…" size="inline" />}
+      {loadingTemplate && <LoadingState variant="archive-pack" description="Loading YAML template…" size="inline" />}
       {contextError && (
         <div className="submission-form__notice">
           <InlineNotification
@@ -613,6 +615,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
         }}
         preventCloseOnClickOutside
       >
+        {submitting && <LoadingState variant="contract-assembly" description={`Submitting ${config.fileLabel}…`} />}
         <p className="submission-form__help">
           The backend checked this section against the CCRT contract schema. Complete contract inputs
           are checked as a pair. Certificate validity is checked during encryption. Once submitted,

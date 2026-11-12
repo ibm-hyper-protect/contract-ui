@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import LoadingState from '../components/LoadingState';
 import PageHeader from '../components/PageHeader';
 import {
   Form,
@@ -9,7 +10,6 @@ import {
   InlineNotification,
   Tile,
   Checkbox,
-  Loading,
   Tag,
   Modal
 } from '@carbon/react';
@@ -460,10 +460,7 @@ const Login = ({ onLogin }) => {
             <Tile className="login-card">
               {isLoggingIn ? (
                 <div className="login-loading">
-                  <Loading description="Authenticating..." withOverlay={false} />
-                  <p className="login-loading__text">
-                    Connecting to backend server...
-                  </p>
+                  <LoadingState variant="connection" description="Signing in to the backend…" />
                 </div>
               ) : (
                 <Form onSubmit={handleSubmit}>

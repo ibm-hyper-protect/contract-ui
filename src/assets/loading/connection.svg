@@ -1,0 +1,71 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="connection" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="connection-title connection-desc">
+  <title id="connection-title">Verbindung</title>
+  <desc id="connection-desc">Continuous exchange of blue packets between a desktop and a backend. Decorative indeterminate connection activity; no completion or security status is asserted.</desc>
+  <style>
+#connection { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #connection { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#connection[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#connection[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.connection-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.connection-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.connection-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.connection-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.connection-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.connection-blue { fill:var(--blue); }
+.connection-muted { fill:var(--muted-blue); }
+.connection-soft { fill:var(--soft); }
+.connection-neutral { fill:var(--line); }
+.connection-faint { fill:var(--faint); }
+#connection[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #connection * { animation:none!important; }
+}
+
+.connection-outbound { stroke-dasharray:12 176; animation:connection-out 3.8s cubic-bezier(.4,0,.2,1) infinite; }
+.connection-inbound { stroke-dasharray:12 176; animation:connection-in 3.8s cubic-bezier(.4,0,.2,1) infinite; }
+.connection-endpoint-left { animation:connection-left 3.8s ease-in-out infinite; }
+.connection-endpoint-right { animation:connection-right 3.8s ease-in-out infinite; }
+@keyframes connection-out { 0%,8% { stroke-dashoffset:188; opacity:0; } 16% { opacity:1; } 55% { stroke-dashoffset:0; opacity:1; } 63%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes connection-in { 0%,43% { stroke-dashoffset:-188; opacity:0; } 51% { opacity:1; } 90% { stroke-dashoffset:0; opacity:1; } 98%,100% { stroke-dashoffset:0; opacity:0; } }
+@keyframes connection-left { 0%,85%,100% { opacity:.28; } 8%,24%,94% { opacity:1; } 45%,65% { opacity:.28; } }
+@keyframes connection-right { 0%,28%,100% { opacity:.28; } 43%,66% { opacity:1; } 83% { opacity:.28; } }
+</style>
+
+<path class="connection-hairline" d="M32 32h8m-4-4v8m240-4h8m-4-4v8M32 144h8m-4-4v8m240-4h8m-4-4v8"/>
+<path class="connection-track" d="M104 80h24l8-8h48l8 8h24M104 96h24l8 8h48l8-8h24"/>
+<path class="connection-accent connection-outbound" d="M104 80h24l8-8h48l8 8h24"/>
+<path class="connection-accent connection-inbound" d="M104 96h24l8 8h48l8-8h24"/>
+<rect class="connection-outline" x="40" y="52" width="64" height="72"/>
+<rect class="connection-outline" x="216" y="52" width="64" height="72"/>
+<path class="connection-hairline" d="M40 64h64m112 0h64"/>
+<rect class="connection-blue connection-endpoint-left" x="40" y="52" width="64" height="2"/>
+<rect class="connection-blue connection-endpoint-right" x="216" y="52" width="64" height="2"/>
+<path class="connection-detail" d="M56 80h32v22H56zM64 110h16m-8-8v8M232 78h32v11h-32zm0 17h32v11h-32z"/>
+<rect class="connection-neutral" x="257" y="82" width="3" height="3"/>
+<rect class="connection-blue connection-endpoint-right" x="257" y="99" width="3" height="3"/>
+<rect class="connection-neutral" x="112" y="78" width="4" height="4"/>
+<rect class="connection-neutral" x="204" y="94" width="4" height="4"/>
+
+</svg>

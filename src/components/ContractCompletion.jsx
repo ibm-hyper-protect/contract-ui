@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import LoadingState from './LoadingState';
 import { CodeSnippet, InlineNotification, Modal } from '@carbon/react';
 import { formatDate } from '../utils/formatters';
 import { getContractSize } from '../utils/contractContent';
@@ -113,6 +114,7 @@ export function ContractPreview({
           : 'Review the signed contract. The assigned environment operator can save and acknowledge it in Export contract.'}
       </p>
       <p className="contract-completion-preview__id">Build ID: {buildId}</p>
+      {busy && <LoadingState variant="contract-assembly" description="Saving contract…" size="inline" />}
       <CodeSnippet
         type="multi"
         wrapText

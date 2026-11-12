@@ -1,0 +1,60 @@
+<!--
+Copyright (c) 2026 IBM Corp.
+All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" id="table-scan" width="320" height="176" viewBox="0 0 320 176" role="img" aria-labelledby="table-scan-title table-scan-desc">
+  <title id="table-scan-title">Tabellenscan</title>
+  <desc id="table-scan-desc">An indeterminate horizontal scan travels through four placeholder table rows. The table geometry remains fixed while rows softly highlight. No real account or log data is shown.</desc>
+  <style>
+#table-scan { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0; --surface:#fff;
+      --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; overflow:visible; }
+@media(prefers-color-scheme:dark) {
+  #table-scan { --ink:#c6c6c6; --line:#525252; --faint:#393939; --surface:#262626;
+        --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+}
+#table-scan[data-theme="light"] { --ink:#525252; --line:#c6c6c6; --faint:#e0e0e0;
+  --surface:#fff; --soft:#edf5ff; --blue:#0f62fe; --muted-blue:#a6c8ff; }
+#table-scan[data-theme="dark"] { --ink:#c6c6c6; --line:#525252; --faint:#393939;
+  --surface:#262626; --soft:#24344b; --blue:#78a9ff; --muted-blue:#385c94; }
+.table-scan-outline { fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.table-scan-hairline { fill:none; stroke:var(--faint); stroke-width:1; }
+.table-scan-detail { fill:none; stroke:var(--ink); stroke-width:1.5; stroke-linejoin:round; }
+.table-scan-track { fill:none; stroke:var(--line); stroke-width:1.5; }
+.table-scan-accent { fill:none; stroke:var(--blue); stroke-width:2; }
+.table-scan-blue { fill:var(--blue); }
+.table-scan-muted { fill:var(--muted-blue); }
+.table-scan-soft { fill:var(--soft); }
+.table-scan-neutral { fill:var(--line); }
+.table-scan-faint { fill:var(--faint); }
+#table-scan[data-motion="reduce"] * { animation:none!important; }
+@media(prefers-reduced-motion:reduce) {
+  #table-scan * { animation:none!important; }
+}
+
+.table-scan-scan { animation:table-scan 5.2s cubic-bezier(.4,0,.2,1) infinite; }
+.table-scan-record { animation:table-row 5.2s ease-in-out infinite; }
+.table-scan-record-1 { animation-delay:.28s; } .table-scan-record-2 { animation-delay:.56s; } .table-scan-record-3 { animation-delay:.84s; }
+@keyframes table-scan { 0%,100% { transform:translateY(0); opacity:0; } 10% { opacity:.9; } 72% { transform:translateY(80px); opacity:.9; } 84% { transform:translateY(80px); opacity:0; } 96% { transform:translateY(0); opacity:0; } }
+@keyframes table-row { 0%,100% { opacity:.16; } 22%,43% { opacity:.85; } 72% { opacity:.16; } }
+</style>
+
+<rect class="table-scan-outline" x="54" y="32" width="212" height="112"/>
+<path class="table-scan-soft" d="M55 33h210v20H55z"/>
+<path class="table-scan-detail" d="M69 43h32m37 0h38m36 0h24"/>
+<path class="table-scan-hairline" d="M54 54h212M54 76h212M54 98h212M54 120h212M126 32v112m73-112v112"/>
+<g class="table-scan-record table-scan-record-0"><rect class="table-scan-soft" x="58" y="59" width="204" height="16"/><path class="table-scan-track" d="M69 66h42m27 0h52m22 0h36"/><rect class="table-scan-blue" x="58" y="59" width="2" height="16"/></g><g class="table-scan-record table-scan-record-1"><rect class="table-scan-soft" x="58" y="80" width="204" height="16"/><path class="table-scan-track" d="M69 87h42m27 0h52m22 0h36"/><rect class="table-scan-blue" x="58" y="80" width="2" height="16"/></g><g class="table-scan-record table-scan-record-2"><rect class="table-scan-soft" x="58" y="101" width="204" height="16"/><path class="table-scan-track" d="M69 108h42m27 0h52m22 0h36"/><rect class="table-scan-blue" x="58" y="101" width="2" height="16"/></g><g class="table-scan-record table-scan-record-3"><rect class="table-scan-soft" x="58" y="122" width="204" height="16"/><path class="table-scan-track" d="M69 129h42m27 0h52m22 0h36"/><rect class="table-scan-blue" x="58" y="122" width="2" height="16"/></g>
+<g class="table-scan-scan"><path class="table-scan-accent" d="M58 56h204"/><rect class="table-scan-soft" x="58" y="57" width="204" height="5"/></g>
+
+</svg>
