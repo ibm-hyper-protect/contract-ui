@@ -272,6 +272,8 @@ Configuration is defined in `vite.config.js`:
 - View build statistics
 
 ### Data Owner
+
+Submission forms include contextual examples explaining registry credentials, syslog certificates and persistent-volume seeds. [Input guidance](docs/contract-input-guidance.md).
 - Contribute data-related sections
 - Sign assigned sections
 - View assigned builds

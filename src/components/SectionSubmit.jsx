@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ContractInputHelp from './ContractInputHelp';
 import {
   Button,
   CodeSnippet,
@@ -356,6 +357,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
               hideCloseButton
             />
           )}
+          <ContractInputHelp section={config.templateType} />
           <Layer
             as="fieldset"
             className="submission-form__layout"
