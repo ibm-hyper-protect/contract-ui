@@ -100,7 +100,7 @@ class BuildService {
   async registerSigningKey(buildId, data = {}) {
     const payload = {
       mode: data.mode || 'generate',
-      ...(data.passphrase ? { passphrase: data.passphrase } : {}),
+      ...(data.passphrase ? { passphrase: data.passphrase.trim() } : {}),
       ...(data.public_key ? { public_key: data.public_key } : {})
     };
     try {
@@ -133,7 +133,7 @@ class BuildService {
   async registerAttestationKey(buildId, data = {}) {
     const payload = {
       mode: data.mode || 'generate',
-      ...(data.passphrase ? { passphrase: data.passphrase } : {}),
+      ...(data.passphrase ? { passphrase: data.passphrase.trim() } : {}),
       ...(data.public_key ? { public_key: data.public_key } : {}),
       ...(data.encryption_cert_pem ? { encryption_cert_pem: data.encryption_cert_pem } : {})
     };
@@ -269,7 +269,7 @@ class BuildService {
    */
   async finalizeBuildV2(buildId, data) {
     const response = await apiClient.post(`/builds/${buildId}/v2/finalize`, {
-      signing_key_passphrase: data.signing_key_passphrase
+      signing_key_passphrase: data.signing_key_passphrase.trim()
     });
     useBuildStore.getState().updateBuildStatus(buildId, 'FINALIZED');
     return response.data;
@@ -336,7 +336,7 @@ class BuildService {
       throw new Error('Evidence ID is required for verification.');
     }
     const response = await apiClient.post(`/builds/${buildId}/attestation/evidence/${evidenceId}/verify`, {
-      attestation_key_passphrase: attestationKeyPassphrase || ''
+      attestation_key_passphrase: attestationKeyPassphrase.trim()
     });
     return response.data;
   }

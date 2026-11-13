@@ -618,6 +618,8 @@ registerIpcHandler('contractCli:assembleContract', async (event, sections) => {
 
 // Generate signing key pair (RSA-4096), write to folder with passphrase-encrypted private key
 registerIpcHandler('auditor:generateSigningKey', async (event, { folderPath, passphrase }) => {
+  passphrase = passphrase.trim();
+  if (!passphrase) throw new Error('Passphrase is required.');
   const { promises: fs } = require('fs');
   const path = require('path');
   const crypto = require('crypto');
@@ -654,6 +656,8 @@ registerIpcHandler('auditor:generateSigningCert', async (event, {
   folderPath, passphrase,
   country, state, locality, organisation, unit, domain, email
 }) => {
+  passphrase = passphrase.trim();
+  if (!passphrase) throw new Error('Passphrase is required.');
   const { spawn } = require('child_process');
   const { promises: fs } = require('fs');
   const path = require('path');
@@ -719,6 +723,8 @@ registerIpcHandler('auditor:generateSigningCert', async (event, {
 
 // Generate attestation key pair (RSA-4096), write to folder with passphrase
 registerIpcHandler('auditor:generateAttestationKey', async (event, { folderPath, passphrase }) => {
+  passphrase = passphrase.trim();
+  if (!passphrase) throw new Error('Passphrase is required.');
   const { promises: fs } = require('fs');
   const path = require('path');
   const crypto = require('crypto');
@@ -952,6 +958,8 @@ registerIpcHandler('auditor:signContract', async (event, {
   signingKeyPath,     // path to encrypted RSA private key PEM
   signingPassphrase,  // passphrase to decrypt the private key
 }) => {
+  signingPassphrase = signingPassphrase.trim();
+  if (!signingPassphrase) throw new Error('Signing key passphrase is required.');
   const { spawn } = require('child_process');
 
   const send = (type, line) => {

@@ -478,3 +478,5 @@ Built with:
 - Electron Framework
 - React and Vite
 - Open source community contributions
+
+Build signing/attestation passphrases ignore leading and trailing whitespace consistently during registration, local key operations, finalization and evidence verification. Internal spaces remain significant. Deploy the matching backend normalization fix before this frontend. Existing keys encrypted with significant surrounding whitespace are not migrated automatically and need replacement through the supported build workflow. Account and encrypted identity-backup passwords are unchanged.

@@ -354,7 +354,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
               id="attestation-verify-passphrase"
               labelText="Attestation Key Passphrase"
               placeholder="Enter attestation key passphrase"
-              helperText="Required when the attestation private key is encrypted."
+              helperText="Required when the attestation private key is encrypted. Leading and trailing whitespace is ignored."
               value={attestationKeyPassphrase}
               onChange={(e) => setAttestationKeyPassphrase(e.target.value)}
               autoComplete="new-password"

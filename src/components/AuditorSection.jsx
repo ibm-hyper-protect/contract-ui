@@ -333,12 +333,13 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               id="signing-key-passphrase"
               labelText="Signing Key Passphrase"
               placeholder="Enter passphrase"
+              helperText="Leading and trailing whitespace is ignored."
               value={signingPassphrase}
               onChange={(e) => setSigningPassphrase(e.target.value)}
               autoComplete="new-password"
               disabled={registeringSigning || isTerminal || isSigningRegistered}
             />
-            <PasswordStrengthMeter password={signingPassphrase} />
+            <PasswordStrengthMeter password={signingPassphrase.trim()} />
             {signingKeyID && (
               <p className="workflow-step-copy">
                 Signing Key ID: <code>{signingKeyID}</code>
@@ -384,13 +385,14 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               id="attestation-key-passphrase"
               labelText="Attestation Key Passphrase"
               placeholder="Enter passphrase"
+              helperText="Leading and trailing whitespace is ignored."
               value={attestationPassphrase}
               onChange={(e) => setAttestationPassphrase(e.target.value)}
               autoComplete="new-password"
               disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
             />
             
-            <PasswordStrengthMeter password={attestationPassphrase} />
+            <PasswordStrengthMeter password={attestationPassphrase.trim()} />
             
             <div style={{ marginTop: '1rem' }}>
               <h5 className="workflow-step-title" style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>

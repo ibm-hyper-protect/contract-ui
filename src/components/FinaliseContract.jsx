@@ -85,7 +85,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
   async function finalise(event) {
     event.preventDefault();
     if (!ready || loadingStatus || statusError || busy) return;
-    if (!passphrase) {
+    if (!passphrase.trim()) {
       setInvalid(true);
       return;
     }
@@ -93,7 +93,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
     setError('');
     try {
       const result = await buildService.finalizeBuildV2(buildId, {
-        signing_key_passphrase: passphrase,
+        signing_key_passphrase: passphrase.trim(),
       });
       if (!active.current) return;
       setAccepted(true);
@@ -237,7 +237,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
                     invalid={invalid}
                     invalidText="Enter the signing key passphrase."
                     autoComplete="off"
-                    helperText="Use the passphrase set when the signing key was registered. It is cleared after finalisation."
+                    helperText="Use the passphrase set when the signing key was registered. Leading and trailing whitespace is ignored. It is cleared after finalisation."
                   />
                   <div className="contract-completion__actions">
                     <Button type="submit" renderIcon={Checkmark}>
