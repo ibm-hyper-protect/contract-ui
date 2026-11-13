@@ -3,6 +3,8 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { URL, fileURLToPath } = require('node:url');
 const { spawn } = require('child_process');
+const http = require('http');
+const { randomBytes, timingSafeEqual } = require('node:crypto');
 const keyManager = require('./crypto/keyManager');
 const encryptor = require('./crypto/encryptor');
 const signer = require('./crypto/signer');
@@ -20,6 +22,9 @@ let mainWindow = null;
 const DEFAULT_SERVER_URL = 'http://localhost:8080';
 const CONFIG_DIR_NAME = 'ibm-cc-contract-builder';
 const CONFIG_FILE_NAME = 'config.json';
+const OIDC_CALLBACK_PORT = 38917;
+const OIDC_CALLBACK_PATH = '/auth/callback';
+let oidcCallbackServer = null;
 
 const getDevOrigin = () => {
   try {
@@ -1139,6 +1144,46 @@ registerIpcHandler('file:selectDirectory', async (event) => {
     throw new Error(`Directory selection failed: ${error.message}`);
   }
 });
+
+const startOidcLogin = () => new Promise((resolve, reject) => {
+  oidcCallbackServer?.close();
+  const state = randomBytes(32).toString('hex');
+  let timer;
+
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, `http://localhost:${OIDC_CALLBACK_PORT}`);
+    if (url.pathname !== OIDC_CALLBACK_PATH) {
+      res.writeHead(404).end();
+      return;
+    }
+    const code = url.searchParams.get('code');
+    const returned = Buffer.from(url.searchParams.get('state') || '');
+    const expected = Buffer.from(state);
+    const ok = code && returned.length === expected.length && timingSafeEqual(returned, expected);
+
+    clearTimeout(timer);
+    server.close();
+    res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(`<html><body><h2>${ok ? 'Login successful!' : 'Login failed.'} You will be redirected.</h2></body></html>`);
+
+    if (mainWindow) {
+      mainWindow.webContents.send('oidc:callback', ok ? { code } : { error: 'Login with IBM w3id failed. Please try again.' });
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      app.focus({ steal: true });
+      mainWindow.focus();
+    }
+  });
+
+  server.once('error', reject);
+  server.listen({ port: OIDC_CALLBACK_PORT, host: '127.0.0.1' }, () => {
+    oidcCallbackServer = server;
+    timer = setTimeout(() => server.close(), 5 * 60 * 1000);
+    resolve(state);
+  });
+});
+
+registerIpcHandler('auth:startOidcServer', async () => ({ state: await startOidcLogin() }));
 
 // ============================================================================
 // App Lifecycle

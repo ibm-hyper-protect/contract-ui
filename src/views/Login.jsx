@@ -23,7 +23,7 @@ import DesktopTitleBar from '../components/DesktopTitleBar';
 import { getPrimaryRole } from '../utils/roles';
 import { validateEmail } from '../utils/validators';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, oidcError }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberEmail, setRememberEmail] = useState(false);
@@ -41,6 +41,14 @@ const Login = ({ onLogin }) => {
   const [lastTestPassed, setLastTestPassed] = useState(false);
   const [connectionLogs, setConnectionLogs] = useState([]);
   const [error, setError] = useState('');
+  const [isOidcLoading, setIsOidcLoading] = useState(false);
+
+  useEffect(() => {
+    if (oidcError) {
+      setError(oidcError.message)
+      setIsOidcLoading(false)
+    }
+  }, [oidcError])
 
   // Server status
   const [serverStatus, setServerStatus] = useState('checking'); // 'checking', 'online', 'offline'
@@ -345,6 +353,18 @@ const Login = ({ onLogin }) => {
     }
   };
 
+  const handleOidcLogin = async () => {
+    setIsOidcLoading(true);
+    try {
+      const { state } = await window.electron.auth.startOidcServer();
+      const url = await authService.getOidcLoginUrl(state);
+      openExternalLink(url);
+    } catch (err) {
+      setError(err.message || 'Login with IBM w3id failed. Please try again.');
+      setIsOidcLoading(false);
+    }
+  };
+
   const openServerConfigModal = () => {
     const savedUrl = serverUrl || 'http://localhost:8080';
     setTempServerUrl(savedUrl);
@@ -529,6 +549,17 @@ const Login = ({ onLogin }) => {
                     disabled={!isFormValid}
                   >
                     Continue
+                  </Button>
+
+                  <Button
+                    type="button"
+                    kind="primary"
+                    size="lg"
+                    className="login-submit-button"
+                    onClick={handleOidcLogin}
+                    disabled={isOidcLoading}
+                  >
+                    W3-SIGN-IN
                   </Button>
 
                   <div className="login-help-text">
