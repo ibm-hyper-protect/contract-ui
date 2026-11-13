@@ -102,7 +102,7 @@ export default function RuntimeCertificateSelect({ id, disabled = false, onChang
       )}
       {selected && !selected.contract_supported && (
         <InlineNotification kind="warning" title="Contract platform not supported"
-          subtitle="This platform is present in the certificate library, but this backend contract workflow supports CCRT only. Its certificates cannot be submitted here."
+          subtitle="This platform is present in the certificate library, but the backend does not support its contract workflow. Its certificates cannot be submitted here."
           hideCloseButton lowContrast />
       )}
       {selected && !selected.versions.length && <p className="submission-form__help">No certificate versions are available for this platform.</p>}
