@@ -52,6 +52,9 @@ Deploy the companion certificate API after backend contract validation PR #13 an
 Use the same runtime certificate across workload, environment and attestation; the backend pins the build's recipient and revalidates it on submission. Checks: `node --test tests/*.test.mjs` and `npm run build`.
 
 
+Attestation certificate uploads accept non-empty PEM `.pem`, `.crt` and `.cer` files up to 10 KB. Removing or replacing a file clears its previous content, including pending reads; registration waits for the selected file to finish reading. Removing either attestation evidence file also clears that selection before upload. Certificate validity remains checked by the backend.
+
+
 ## Technology Stack
 
 ### Frontend
