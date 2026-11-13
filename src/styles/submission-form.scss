@@ -74,20 +74,62 @@
     @include type.type-style('body-01');
     margin: spacing.$spacing-06 0;
   }
-  &__meta {
-    @include type.type-style('label-01');
-    color: var(--cds-text-secondary);
-    margin: spacing.$spacing-05 0 spacing.$spacing-03;
-  }
   &__notice {
     margin-bottom: spacing.$spacing-06;
   }
   &__complete-icon {
     color: var(--cds-support-success);
-    margin-bottom: spacing.$spacing-04;
+    flex-shrink: 0;
+  }
+  &__complete-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: spacing.$spacing-04;
+    p {
+      @include type.type-style('body-01');
+      color: var(--cds-text-secondary);
+    }
+  }
+  .submission-form__complete-heading h3 {
+    margin-bottom: spacing.$spacing-03;
   }
   &__complete > p {
     @include type.type-style('body-01');
+  }
+  &__receipt {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
+    gap: spacing.$spacing-06;
+    margin-block-start: spacing.$spacing-06;
+    padding-block-start: spacing.$spacing-05;
+    border-block-start: 1px solid var(--cds-border-subtle);
+    > div {
+      min-inline-size: 0;
+    }
+    dt {
+      @include type.type-style('label-01');
+      color: var(--cds-text-secondary);
+      margin-block-end: spacing.$spacing-03;
+    }
+    dd {
+      @include type.type-style('body-01');
+      margin: 0;
+    }
+    .cds--snippet {
+      inline-size: 100%;
+    }
+    .cds--snippet-container {
+      overflow-wrap: anywhere;
+      pre {
+        padding-block-end: 0;
+      }
+    }
+  }
+  &__receipt-hash:only-child {
+    grid-column: 1 / -1;
+  }
+  &__complete-actions {
+    margin-block-start: spacing.$spacing-06;
   }
   &__review > .cds--btn {
     width: 100%;
@@ -153,7 +195,8 @@
   }
 }
 @include breakpoint.breakpoint-down(lg) {
-  .submission-form__layout {
+  .submission-form__layout,
+  .submission-form__receipt {
     grid-template-columns: minmax(0, 1fr);
   }
 }

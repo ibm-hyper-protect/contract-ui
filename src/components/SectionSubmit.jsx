@@ -315,27 +315,44 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
       )}
       {submitted ? (
         <Tile className="submission-form__complete">
-          <CheckmarkFilled size={24} className="submission-form__complete-icon" />
-          <h3>{config.label} submitted</h3>
-          <p>Your {config.fileLabel} has been encrypted and saved to this build.</p>
-          {submitted.submitted_at && (
-            <p className="submission-form__meta">
-              Submitted{' '}
-              {formatDate(submitted.submitted_at, { second: '2-digit', timeZoneName: 'short' })}
-            </p>
-          )}
-          {(submitted.section_hash || receipt?.section_hash) && (
-            <>
-              <p className="submission-form__meta">Encrypted payload hash (SHA-256)</p>
-              <CodeSnippet type="multi" wrapText>
-                {submitted.section_hash || receipt.section_hash}
-              </CodeSnippet>
-            </>
+          <div className="submission-form__complete-heading">
+            <CheckmarkFilled size={24} className="submission-form__complete-icon" aria-hidden="true" />
+            <div>
+              <h3>{config.label} submitted</h3>
+              <p>Encrypted and saved to this build.</p>
+            </div>
+          </div>
+          {(submitted.submitted_at || submitted.section_hash || receipt?.section_hash) && (
+            <dl className="submission-form__receipt">
+              {submitted.submitted_at && (
+                <div>
+                  <dt>Submitted</dt>
+                  <dd>
+                    <time dateTime={submitted.submitted_at}>
+                      {formatDate(submitted.submitted_at, { second: '2-digit', timeZoneName: 'short' })}
+                    </time>
+                  </dd>
+                </div>
+              )}
+              {(submitted.section_hash || receipt?.section_hash) && (
+                <div className="submission-form__receipt-hash">
+                  <dt>Encrypted payload hash (SHA-256)</dt>
+                  <dd>
+                    <CodeSnippet type="multi" wrapText minCollapsedNumberOfRows={1} maxCollapsedNumberOfRows={0}
+                      aria-label="Encrypted payload hash" copyButtonDescription="Copy encrypted payload hash">
+                      {submitted.section_hash || receipt.section_hash}
+                    </CodeSnippet>
+                  </dd>
+                </div>
+              )}
+            </dl>
           )}
           {submitted.encrypted_payload && (
-            <Button kind="ghost" size="sm" renderIcon={View} onClick={() => setPreviewOpen(true)}>
-              View encrypted payload
-            </Button>
+            <div className="submission-form__complete-actions">
+              <Button kind="tertiary" size="sm" renderIcon={View} onClick={() => setPreviewOpen(true)}>
+                View encrypted payload
+              </Button>
+            </div>
           )}
         </Tile>
       ) : loaded && liveStatus === BUILD_STATUS.CANCELLED ? (
