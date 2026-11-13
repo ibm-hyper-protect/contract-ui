@@ -90,13 +90,11 @@ function inspectCompose(content) {
     }
   };
   visit(compose);
-  return { services: Object.keys(compose.services), images: Object.values(compose.services).map(service => service.image) };
+  return { compose, services: Object.keys(compose.services), images: Object.values(compose.services).map(service => service.image) };
 }
 
-/** Build workload YAML without reading local references or changing secrets. */
-function prepareComposeWorkload({ content, volumes = [] } = {}) {
-  const summary = inspectCompose(content);
-  const workload = { type: 'workload', compose: { archive: archiveCompose(content).toString('base64') } };
+function prepareVolumes(volumes) {
+  const result = Object.create(null);
   if (!Array.isArray(volumes)) throw new Error('Persistent volumes must be a list.');
   const names = new Set();
   const mounts = new Set();
@@ -111,10 +109,84 @@ function prepareComposeWorkload({ content, volumes = [] } = {}) {
     if (mounts.has(mount)) throw new Error(`Guest mount path ${mount} is used more than once.`);
     names.add(volume.name);
     mounts.add(mount);
-    workload.volumes ||= {};
-    workload.volumes[volume.name] = { mount, filesystem: 'ext4', seed: volume.seed };
+    result[volume.name] = { mount, filesystem: 'ext4', seed: volume.seed };
   }
+  return result;
+}
+
+/** Build workload YAML without reading local references or changing secrets. */
+function prepareComposeWorkload({ content, volumes = [] } = {}) {
+  const { compose: _compose, ...summary } = inspectCompose(content);
+  const workload = { type: 'workload', compose: { archive: archiveCompose(content).toString('base64') } };
+  const preparedVolumes = prepareVolumes(volumes);
+  if (volumes.length) workload.volumes = preparedVolumes;
   return { plaintext: yaml.dump(workload, { noRefs: true, lineWidth: -1 }), ...summary };
 }
 
-module.exports = { prepareComposeWorkload };
+/** Prepare explicitly selected Compose definitions or Podman Pod/ConfigMap manifests.
+ * Disjoint Compose definitions are combined; conflicting definitions require an
+ * explicitly resolved Compose file, rather than guessing override semantics.
+ */
+function prepareWorkload({ format, files, volumes = [] } = {}) {
+  if (!['compose', 'play'].includes(format) || !Array.isArray(files) || !files.length || files.length > 32) {
+    throw new Error('Choose a format and between 1 and 32 YAML files.');
+  }
+  let total = 0;
+  const names = new Set();
+  for (const file of files) {
+    if (!mapping(file) || typeof file.name !== 'string' || !/\.ya?ml$/i.test(file.name) ||
+        names.has(file.name) || typeof file.content !== 'string' || !file.content.trim() ||
+        Buffer.byteLength(file.content, 'utf8') > MAX_COMPOSE_BYTES) {
+      throw new Error('Choose non-empty YAML files with unique names, each no larger than 1 MB.');
+    }
+    names.add(file.name);
+    total += Buffer.byteLength(file.content, 'utf8');
+  }
+  if (total > 5 * MAX_COMPOSE_BYTES) throw new Error('Selected YAML files must total no more than 5 MB.');
+  if (format === 'compose') {
+    const combined = Object.create(null);
+    for (const file of files) {
+      const { compose } = inspectCompose(file.content);
+      for (const [key, value] of Object.entries(compose)) {
+        if (!Object.hasOwn(combined, key)) { combined[key] = value; continue; }
+        if (mapping(value) && mapping(combined[key])) {
+          for (const [name, entry] of Object.entries(value)) {
+            if (Object.hasOwn(combined[key], name)) {
+              throw new Error(`Compose ${key}.${name} occurs in multiple files. Resolve overrides with docker compose config and import the resolved file.`);
+            }
+            Object.defineProperty(combined[key], name, { value: entry, enumerable: true });
+          }
+        } else if (value !== combined[key]) {
+          throw new Error(`Compose ${key} conflicts between files. Import a resolved Compose file.`);
+        }
+      }
+    }
+    const content = files.length === 1 ? files[0].content : yaml.dump(combined, { noRefs: true, lineWidth: -1 });
+    return prepareComposeWorkload({ content, volumes });
+  }
+  const resources = [];
+  const identities = new Set();
+  for (const file of files) {
+    let documents;
+    try { documents = yaml.loadAll(file.content, undefined, { schema: yaml.JSON_SCHEMA }); }
+    catch { throw new Error(`${file.name} contains invalid YAML.`); }
+    for (const item of documents) {
+      if (!mapping(item) || item.apiVersion !== 'v1' || !['Pod', 'ConfigMap'].includes(item.kind) ||
+          !mapping(item.metadata) || typeof item.metadata.name !== 'string' || !item.metadata.name.trim()) {
+        throw new Error('Podman Play import accepts v1 Pod and ConfigMap documents with metadata.name.');
+      }
+      const identity = JSON.stringify([item.kind, item.metadata.namespace || '', item.metadata.name]);
+      if (identities.has(identity)) throw new Error(`Duplicate ${item.kind}: ${item.metadata.name}.`);
+      identities.add(identity);
+      try { JSON.stringify(item); }
+      catch { throw new Error('Recursive YAML aliases are not supported.'); }
+      resources.push(item);
+    }
+  }
+  const preparedVolumes = prepareVolumes(volumes);
+  const prepared = { type: 'workload', play: { resources } };
+  if (volumes.length) prepared.volumes = preparedVolumes;
+  return { plaintext: yaml.dump(prepared, { noRefs: true, lineWidth: -1 }) };
+}
+
+module.exports = { prepareComposeWorkload, prepareWorkload };
