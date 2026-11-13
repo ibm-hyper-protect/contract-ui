@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const { prepareComposeWorkload } = require('./composeWorkload');
 const { URL, fileURLToPath } = require('node:url');
 const { spawn } = require('child_process');
 const keyManager = require('./crypto/keyManager');
@@ -1064,6 +1065,8 @@ registerIpcHandler('window:close', (event) => {
 // ============================================================================
 // IPC Handlers - File Operations
 // ============================================================================
+
+registerIpcHandler('workload:prepareCompose', (_event, options) => prepareComposeWorkload(options));
 
 registerIpcHandler('file:selectFile', async (event, options) => {
   try {

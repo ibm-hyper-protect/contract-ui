@@ -16,6 +16,7 @@ import {
   Tile,
 } from '@carbon/react';
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
+import ComposeWorkloadImport from './ComposeWorkloadImport';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
 import RuntimeCertificateSelect from './RuntimeCertificateSelect';
@@ -67,6 +68,7 @@ function SubmissionSummary({ yamlName, certificateName, statusLabel }) {
 
 function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const config = ROLE_CONFIG[personaRole];
+  const [composeImportOpen, setComposeImportOpen] = useState(false);
   const [liveStatus, setLiveStatus] = useState(buildStatus);
   const [existingSection, setExistingSection] = useState(null);
   const [receipt, setReceipt] = useState(null);
@@ -378,6 +380,11 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   onAddFiles={(_, { addedFiles }) => readFile(addedFiles[0], 'yaml')}
                 />
                 <div className="submission-form__actions">
+                  {personaRole === 'SOLUTION_PROVIDER' && (
+                    <Button kind="ghost" size="sm" disabled={disabled} onClick={() => setComposeImportOpen(true)}>
+                      Import Docker Compose
+                    </Button>
+                  )}
                   <Button
                     kind="ghost"
                     size="sm"
@@ -533,6 +540,15 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
           </Layer>
         </>
       ) : null}
+      {composeImportOpen && !disabled && (
+        <ComposeWorkloadImport
+          onClose={() => setComposeImportOpen(false)}
+          onApply={(content) => {
+            setComposeImportOpen(false);
+            openEditor(content, 'compose-workload.yaml');
+          }}
+        />
+      )}
       <Modal
         open={!!draft}
         modalHeading={`Edit ${config.fileLabel} YAML`}

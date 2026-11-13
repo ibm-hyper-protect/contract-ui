@@ -94,6 +94,10 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.invoke('contractCli:assembleContract', sections)
   },
   
+  workload: {
+    prepareCompose: (options) => ipcRenderer.invoke('workload:prepareCompose', options)
+  },
+
   // File operations
   file: {
     selectFile: (options) =>
