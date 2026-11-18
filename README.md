@@ -16,6 +16,10 @@ The IBM Confidential Computing Contract UI is an Electron-based desktop applicat
 - **Audit Trail**: Comprehensive logging of all contract operations and user actions
 - **Export & Verification**: Contract export with signature verification capabilities
 
+### Submission receipts
+
+Submitted workload and environment sections show the submission time and the complete SHA-256 hash of their encrypted payload. Copy the hash using its copy button, or choose **View encrypted payload** to inspect the saved encrypted section. The receipt uses Carbon theme tokens and wraps long hashes on narrow windows without truncating them.
+
 ### Device keys
 
 Manage up to five active identity keys per account, identify this device’s signing key, transfer an encrypted backup to a trusted device, and revoke keys individually. Requires the multi-key Contract Manager backend. See the [device-key guide](docs/device-keys.md) for setup, recovery, and verification.
