@@ -562,7 +562,7 @@ const Login = ({ onLogin, oidcError }) => {
                     onClick={handleOidcLogin}
                     disabled={isOidcLoading}
                   >
-                    W3-SIGN-IN
+                    W3 SIGN IN
                   </Button>
 
                   <div className="login-help-text">
