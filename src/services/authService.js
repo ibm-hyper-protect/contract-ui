@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { useAuthStore } from '../store/authStore';
+import { getPrimaryRole } from '../utils/roles';
 
 class AuthService {
   /**
@@ -22,6 +23,31 @@ class AuthService {
     apiClient.setAuthToken(token);
 
     return { token, user: enrichedUser };
+  }
+
+  async getOidcLoginUrl(state) {
+    const response = await apiClient.get('/auth/oidc/login', { params: { state } })
+    return response.data.url
+  }
+
+  async handleOidcCallback(code) {
+    try {
+      const response = await apiClient.post('/auth/oidc/callback', { code });
+      const { token, user } = response.data;
+      useAuthStore.getState().setAuth(user, token)
+      apiClient.setAuthToken(token)
+      localStorage.setItem('auth_token', token)
+      localStorage.setItem('user_role', getPrimaryRole(user.roles || []))
+      localStorage.setItem('user_roles', JSON.stringify(user.roles || []))
+      localStorage.setItem('user_email', user.email)
+      return { token, user }
+    }
+    catch (err) {
+      if (err.status === 403) {
+        throw new Error(err.message || 'Your account is not registered or has been deactivated.')
+      }
+      throw err
+    }
   }
 
   /**
