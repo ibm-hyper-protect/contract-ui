@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ContractInputHelp from './ContractInputHelp';
 import {
   Button,
@@ -19,7 +19,7 @@ import ConfirmDialog from './ConfirmDialog';
 import LoadingState from './LoadingState';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import RuntimeCertificateSelect from './RuntimeCertificateSelect';
-import { hasCertificateContent } from '../utils/submissionForm';
+import { hasCertificateContent, validateSubmissionFile } from '../utils/submissionForm';
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
 const STATUS_TAG_TYPE = {
@@ -71,6 +71,11 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
   const [runtimeCertificate, setRuntimeCertificate] = useState(null);
   const [customCertContent, setCustomCertContent] = useState('');
   const [customCertFileName, setCustomCertFileName] = useState('');
+  const [readingCertificate, setReadingCertificate] = useState(false);
+  const certificateRequest = useRef(0);
+  const certificateUploader = useRef(null);
+
+  useEffect(() => () => { ++certificateRequest.current; }, []);
 
   const [registeringSigning, setRegisteringSigning] = useState(false);
   const [registeringAttestation, setRegisteringAttestation] = useState(false);
@@ -196,16 +201,48 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
     }
   };
 
-  const handleCustomCertUpload = (e) => {
+  const clearCustomCertificate = () => {
+    ++certificateRequest.current;
+    setCustomCertContent('');
+    setCustomCertFileName('');
+    setReadingCertificate(false);
+  };
+
+  const handleCustomCertUpload = async (e) => {
+    clearCustomCertificate();
+    setError(null);
     const file = e.target.files?.[0];
     if (!file) return;
-    setCustomCertFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => setCustomCertContent(ev.target.result);
-    reader.readAsText(file);
+    const validationError = validateSubmissionFile(file, 'certificate');
+    if (validationError) {
+      certificateUploader.current?.clearFiles();
+      setError(validationError);
+      return;
+    }
+    const request = certificateRequest.current;
+    setReadingCertificate(true);
+    try {
+      const content = await file.text();
+      if (request !== certificateRequest.current) return;
+      if (!hasCertificateContent(content)) {
+        certificateUploader.current?.clearFiles();
+        setError('Choose a PEM certificate with BEGIN CERTIFICATE and END CERTIFICATE markers.');
+        return;
+      }
+      setCustomCertContent(content);
+      setCustomCertFileName(file.name);
+    } catch {
+      if (request === certificateRequest.current) {
+        certificateUploader.current?.clearFiles();
+        setError('Unable to read this file. Please choose it again.');
+      }
+    } finally {
+      if (request === certificateRequest.current) setReadingCertificate(false);
+    }
   };
 
   const handleRegisterAttestationKey = () => {
+    if (readingCertificate) return;
     setError(null);
     setSuccess(null);
 
@@ -233,6 +270,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
   };
 
   const confirmRegisterAttestationKey = async () => {
+    if (readingCertificate) return;
     setConfirmRegisterAttestationOpen(false);
     setError(null);
     setSuccess(null);
@@ -398,14 +436,14 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               <h5 className="workflow-step-title" style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                 Runtime encryption certificate
               </h5>
-              <p style={{ fontSize: '0.875rem', color: '#525252', marginBottom: '0.75rem' }}>
+              <p className="workflow-step-copy">
                 The attestation public key will be encrypted using this certificate before storage.
               </p>
               
               <RadioButtonGroup
                 name="attestation-cert-source"
                 valueSelected={certSource}
-                onChange={(val) => { setRuntimeCertificate(null); setCertSource(val); }}
+                onChange={(val) => { clearCustomCertificate(); setRuntimeCertificate(null); setCertSource(val); }}
                 className="workflow-radio-group"
                 disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
               >
@@ -432,18 +470,22 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
               ) : (
                 <div style={{ marginTop: '1rem' }}>
                   <FileUploader
-                    labelDescription="Upload certificate (.crt / .pem)"
+                    ref={certificateUploader}
+                    labelDescription="Upload a PEM certificate (.crt / .pem / .cer), up to 10 KB."
                     buttonLabel="Choose file"
                     filenameStatus="edit"
+                    iconDescription="Remove certificate file"
                     accept={['.crt', '.pem', '.cer']}
                     onChange={handleCustomCertUpload}
+                    onDelete={() => { clearCustomCertificate(); setError(null); }}
                     disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
                   />
                   {customCertFileName && (
-                    <p className="workflow-upload-meta" style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#525252' }}>
+                    <p className="workflow-upload-meta">
                       {customCertFileName} loaded
                     </p>
                   )}
+                  {readingCertificate && <p className="workflow-upload-meta" role="status">Reading certificate…</p>}
                 </div>
               )}
             </div>
@@ -454,8 +496,9 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
             )}
             <Button
               kind="secondary"
+              className="workflow-attestation-submit"
               onClick={handleRegisterAttestationKey}
-              disabled={registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
+              disabled={readingCertificate || registeringAttestation || !canRegisterAttestation || isTerminal || isAttestationRegistered}
             >
               {registeringAttestation ? 'Registering...' : (isAttestationRegistered ? 'Attestation Key Registered' : 'Register Attestation Key')}
             </Button>

@@ -358,7 +358,7 @@ const FilterPresetManager = ({
         <p>
           Are you sure you want to delete the preset <strong>"{selectedPreset?.name}"</strong>?
         </p>
-        <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#525252' }}>
+        <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--cds-text-secondary)' }}>
           This action cannot be undone.
         </p>
       </Modal>

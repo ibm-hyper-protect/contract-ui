@@ -299,7 +299,9 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
                   labelDescription="Upload encrypted attestation records"
                   buttonLabel="Choose records file"
                   filenameStatus="edit"
+                  iconDescription="Remove records file"
                   onChange={(e) => setRecordsFile(e.target.files?.[0] || null)}
+                  onDelete={() => setRecordsFile(null)}
                   disabled={uploading || !canUpload}
                 />
                 {recordsFile && <p className="workflow-upload-meta">{recordsFile.name}</p>}
@@ -312,7 +314,9 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
                   labelDescription="Upload signature for attestation records"
                   buttonLabel="Choose signature file"
                   filenameStatus="edit"
+                  iconDescription="Remove signature file"
                   onChange={(e) => setSignatureFile(e.target.files?.[0] || null)}
+                  onDelete={() => setSignatureFile(null)}
                   disabled={uploading || !canUpload}
                 />
                 {signatureFile && <p className="workflow-upload-meta">{signatureFile.name}</p>}
