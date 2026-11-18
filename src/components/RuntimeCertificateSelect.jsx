@@ -76,6 +76,7 @@ export default function RuntimeCertificateSelect({ id, disabled = false, onChang
   }, [selected, platform, version, certificateRetry, serverUrl, token, onChange]);
 
   const clearChoice = () => { onChange(null); setCertificate(null); setCertificateError(''); };
+  const fixpacks = selected?.releases?.find(r => r.mod === version)?.fixpacks ?? [];
   return (
     <div className="runtime-certificate-select">
       {!platforms && !catalogError && <InlineLoading description="Loading runtime platforms…" />}
@@ -94,9 +95,12 @@ export default function RuntimeCertificateSelect({ id, disabled = false, onChang
             {platforms.map(item => <SelectItem key={item.id} value={item.id} text={item.id.toUpperCase()} />)}
           </Select>
           <Select id={id + '-version'} labelText="Certificate version" value={version} disabled={disabled || !selected?.versions.length}
+            helperText={fixpacks.length ? `Fixpacks: ${fixpacks.join(' · ')}` : undefined}
             onChange={event => { clearChoice(); setVersion(event.target.value); }}>
             <SelectItem value="" text="Choose a version" />
-            {selected?.versions.map(item => <SelectItem key={item} value={item} text={item} />)}
+            {selected?.releases
+              ? selected.releases.map(r => <SelectItem key={r.mod} value={r.mod} text={r.mod} />)
+              : selected?.versions.map(item => <SelectItem key={item} value={item} text={item} />)}
           </Select>
         </div>
       )}
