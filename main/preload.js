@@ -95,6 +95,7 @@ contextBridge.exposeInMainWorld('electron', {
   },
   
   workload: {
+    prepare: (options) => ipcRenderer.invoke('workload:prepare', options),
     prepareCompose: (options) => ipcRenderer.invoke('workload:prepareCompose', options)
   },
 

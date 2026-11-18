@@ -16,7 +16,8 @@ import {
   Tile,
 } from '@carbon/react';
 import { ArrowRight, CheckmarkFilled, DocumentAdd, Edit, Renew, View } from '@carbon/icons-react';
-import ComposeWorkloadImport from './ComposeWorkloadImport';
+import WorkloadImport from './WorkloadImport';
+import EnvironmentVolumes from './EnvironmentVolumes';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
 import RuntimeCertificateSelect from './RuntimeCertificateSelect';
@@ -68,6 +69,7 @@ function SubmissionSummary({ yamlName, certificateName, statusLabel }) {
 
 function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const config = ROLE_CONFIG[personaRole];
+  const [environmentVolumesOpen, setEnvironmentVolumesOpen] = useState(false);
   const [composeImportOpen, setComposeImportOpen] = useState(false);
   const [liveStatus, setLiveStatus] = useState(buildStatus);
   const [existingSection, setExistingSection] = useState(null);
@@ -371,6 +373,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                   {personaRole === 'SOLUTION_PROVIDER' &&
                     ' Podman play accepts play.archive, play.resources, play.templates, or uploaded Pod and ConfigMap YAML.'}
                 </p>
+                {personaRole === 'DATA_OWNER' && <p className="submission-form__help">Add YAML first, then configure environment volumes with names matching the workload and your own seeds.</p>}
                 <FileUploaderDropContainer
                   id={`yaml-file-${personaRole}`}
                   accept={['.yaml', '.yml']}
@@ -382,9 +385,11 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                 <div className="submission-form__actions">
                   {personaRole === 'SOLUTION_PROVIDER' && (
                     <Button kind="ghost" size="sm" disabled={disabled} onClick={() => setComposeImportOpen(true)}>
-                      Import Docker Compose
+                      Import Docker Compose / Podman Play
                     </Button>
                   )}
+                  {personaRole === 'DATA_OWNER' && <Button kind="ghost" size="sm" disabled={disabled || !hasYaml}
+                    onClick={() => setEnvironmentVolumesOpen(true)}>Configure environment volumes</Button>}
                   <Button
                     kind="ghost"
                     size="sm"
@@ -540,12 +545,17 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
           </Layer>
         </>
       ) : null}
+      {environmentVolumesOpen && !disabled && <EnvironmentVolumes content={yaml.content}
+        onClose={() => setEnvironmentVolumesOpen(false)} onApply={content => {
+          setEnvironmentVolumesOpen(false);
+          openEditor(content);
+        }} />}
       {composeImportOpen && !disabled && (
-        <ComposeWorkloadImport
+        <WorkloadImport
           onClose={() => setComposeImportOpen(false)}
           onApply={(content) => {
             setComposeImportOpen(false);
-            openEditor(content, 'compose-workload.yaml');
+            openEditor(content, 'workload.yaml');
           }}
         />
       )}
