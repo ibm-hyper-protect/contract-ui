@@ -938,6 +938,12 @@ body {
   font-size: 0.875rem;
 }
 
+// Show the selected user names (rendered as placeholder) as regular text
+.build-management-multiselect--selected input::placeholder {
+  color: var(--cds-text-primary);
+  opacity: 1;
+}
+
 .build-management-users-loading {
   padding: 2rem;
   text-align: center;
