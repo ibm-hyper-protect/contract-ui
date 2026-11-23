@@ -84,10 +84,10 @@ const ROLE_LABEL_BY_KEY = BUILD_ASSIGNMENT_FIELDS.reduce((acc, field) => {
 }, {});
 
 const EMPTY_ASSIGNMENTS = {
-  [ROLES.SOLUTION_PROVIDER]: '',
-  [ROLES.DATA_OWNER]: '',
-  [ROLES.AUDITOR]: '',
-  [ROLES.ENV_OPERATOR]: ''
+  [ROLES.SOLUTION_PROVIDER]: [],
+  [ROLES.DATA_OWNER]: [],
+  [ROLES.AUDITOR]: [],
+  [ROLES.ENV_OPERATOR]: []
 };
 
 const normalizeUserRole = (role) => {
@@ -567,10 +567,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
     const nameValidation = validateBuildName(buildName);
     return Boolean(
       nameValidation.valid &&
-      assignments[ROLES.SOLUTION_PROVIDER] &&
-      assignments[ROLES.DATA_OWNER] &&
-      assignments[ROLES.AUDITOR] &&
-      assignments[ROLES.ENV_OPERATOR]
+      BUILD_ASSIGNMENT_FIELDS.every(({ role }) => assignments[role].length > 0)
     );
   }, [assignments, buildName]);
 
@@ -593,27 +590,31 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
 
       // Step 2: Create assignments for each role
       if (canManageBuilds) {
-        const roleAssignments = [
-          { role: ROLES.AUDITOR,           userId: assignments[ROLES.AUDITOR] },
-          { role: ROLES.SOLUTION_PROVIDER, userId: assignments[ROLES.SOLUTION_PROVIDER] },
-          { role: ROLES.DATA_OWNER,        userId: assignments[ROLES.DATA_OWNER] },
-          { role: ROLES.ENV_OPERATOR,      userId: assignments[ROLES.ENV_OPERATOR] }
-        ].filter(a => a.userId);
+        const roleAssignments = BUILD_ASSIGNMENT_FIELDS.flatMap(({ role }) =>
+          assignments[role].map(userId => ({ role, userId }))
+        );
 
-        for (const assignment of roleAssignments) {
-          const selectedUser = users.find((user) => user.id === assignment.userId);
-          const roleLabel = ROLE_LABEL_BY_KEY[assignment.role] || assignment.role;
-          if (!selectedUser) {
-            throw new Error(`Selected user not found for ${roleLabel}.`);
+        try {
+          for (const assignment of roleAssignments) {
+            const selectedUser = users.find((user) => user.id === assignment.userId);
+            const roleLabel = ROLE_LABEL_BY_KEY[assignment.role] || assignment.role;
+            if (!selectedUser) {
+              throw new Error(`Selected user not found for ${roleLabel}.`);
+            }
+            if (!userHasRole(selectedUser, assignment.role)) {
+              throw new Error(`${selectedUser.name} does not have ${roleLabel} role.`);
+            }
+            try {
+              await assignmentService.createAssignment(build.id, assignment.userId, assignment.role);
+            } catch (err) {
+              throw new Error(`Failed to assign ${roleLabel} (${selectedUser.name}): ${err.message}`);
+            }
           }
-          if (!userHasRole(selectedUser, assignment.role)) {
-            throw new Error(`${selectedUser.name} does not have ${roleLabel} role.`);
-          }
-          try {
-            await assignmentService.createAssignment(build.id, assignment.userId, assignment.role);
-          } catch (err) {
-            throw new Error(`Failed to assign ${roleLabel}: ${err.message}`);
-          }
+        } catch (err) {
+          // Do not leave a half-assigned build behind: cancel it and say why.
+          const cancelled = await buildService.cancelBuild(build.id).then(() => true, () => false);
+          if (onBuildCreated) await onBuildCreated();
+          throw new Error(`${err.message} Build "${buildName}" ${cancelled ? 'was cancelled.' : 'could not be cancelled; cancel it manually.'}`);
         }
       }
 
@@ -1259,9 +1260,8 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
             <div className="build-management-modal-section">
               <h4 className="build-management-modal-title">Assign Users to Roles</h4>
               <p className="build-management-modal-description">
-                Each role must be assigned to a user. The same user can be assigned to multiple roles. Only users who have completed their initial login and registered a public key are eligible.
+                Each role must be assigned to at least one user. The same user can be assigned to multiple roles. Only users who have completed their initial login and registered a public key are eligible.
               </p>
-
               {loadingUsers ? (
                 <div className="build-management-users-loading">
                   <LoadingState variant="table-scan" description="Loading users…" size="inline" />
@@ -1290,21 +1290,26 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                       ? 'No eligible users. Users must complete initial setup.'
                       : undefined;
 
+                    const selectedUsers = roleEligibleUsers.filter(user => assignments[role].includes(user.id));
+
                     return (
-                      <Select
+                      <FilterableMultiSelect
                         key={role}
                         id={id}
-                        labelText={label}
-                        value={assignments[role]}
+                        className={selectedUsers.length ? 'build-management-multiselect--selected' : undefined}
+                        titleText={label}
+                        placeholder={selectedUsers.length ? selectedUsers.map(user => user.name).join(', ') : 'Select users'}
+                        autoAlign
                         helperText={helperText}
-                        onChange={(e) => setAssignments(prev => ({ ...prev, [role]: e.target.value }))}
+                        items={roleEligibleUsers}
+                        itemToString={(user) => user?.name ?? ''}
+                        selectedItems={selectedUsers}
+                        onChange={({ selectedItems }) => setAssignments(prev => ({
+                          ...prev,
+                          [role]: selectedItems.map(user => user.id)
+                        }))}
                         disabled={creating || loadingUsers}
-                      >
-                        <SelectItem value="" text="Select a user" />
-                        {roleEligibleUsers.map(user => (
-                          <SelectItem key={user.id} value={user.id} text={user.name} />
-                        ))}
-                      </Select>
+                      />
                     );
                   })}
                 </Stack>
