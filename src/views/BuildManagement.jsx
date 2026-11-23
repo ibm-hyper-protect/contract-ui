@@ -1290,17 +1290,20 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                       ? 'No eligible users. Users must complete initial setup.'
                       : undefined;
 
+                    const selectedUsers = roleEligibleUsers.filter(user => assignments[role].includes(user.id));
+
                     return (
                       <FilterableMultiSelect
                         key={role}
                         id={id}
+                        className={selectedUsers.length ? 'build-management-multiselect--selected' : undefined}
                         titleText={label}
-                        placeholder="Select users"
+                        placeholder={selectedUsers.length ? selectedUsers.map(user => user.name).join(', ') : 'Select users'}
                         autoAlign
                         helperText={helperText}
                         items={roleEligibleUsers}
                         itemToString={(user) => user?.name ?? ''}
-                        selectedItems={roleEligibleUsers.filter(user => assignments[role].includes(user.id))}
+                        selectedItems={selectedUsers}
                         onChange={({ selectedItems }) => setAssignments(prev => ({
                           ...prev,
                           [role]: selectedItems.map(user => user.id)
