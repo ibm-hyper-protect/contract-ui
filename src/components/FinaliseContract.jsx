@@ -64,6 +64,21 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
     };
   }, [buildId]);
 
+  const [registeredBy, setRegisteredBy] = useState('');
+  useEffect(() => {
+    let current = true;
+    buildService
+      .getAuditEvents(buildId)
+      .then((events) => {
+        const event = events.find((e) => e.event_type === 'SIGNING_KEY_CREATED');
+        if (current) setRegisteredBy(event?.actor_name || '');
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [buildId]);
+
   async function retryStatus() {
     if (!begin('status')) return;
     setStatusError('');
@@ -237,7 +252,7 @@ function FinaliseContractForm({ buildId, buildStatus, onStatusUpdate }) {
                     invalid={invalid}
                     invalidText="Enter the signing key passphrase."
                     autoComplete="off"
-                    helperText="Use the passphrase set when the signing key was registered. Leading and trailing whitespace is ignored. It is cleared after finalisation."
+                    helperText={`Use the passphrase set when the signing key was registered${registeredBy ? ` by ${registeredBy}` : ''}. Leading and trailing whitespace is ignored. It is cleared after finalisation.`}
                   />
                   <div className="contract-completion__actions">
                     <Button type="submit" renderIcon={Checkmark}>
