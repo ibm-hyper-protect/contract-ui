@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('electron', {
   
   // Crypto operations
   crypto: {
+    chooseSecretImportFile: () => ipcRenderer.invoke('crypto:chooseSecretImportFile'),
+    secretImportStatus: options => ipcRenderer.invoke('crypto:secretImportStatus', options),
+    trustSecretImportKey: options => ipcRenderer.invoke('crypto:trustSecretImportKey', options),
+    sealSecretImport: options => ipcRenderer.invoke('crypto:sealSecretImport', options),
     generateIdentityKeyPair: () =>
       ipcRenderer.invoke('crypto:generateIdentityKeyPair'),
     

@@ -53,6 +53,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
   const [liveBuildStatus, setLiveBuildStatus] = useState(buildStatusProp || '');
   const [attestationStatus, setAttestationStatus] = useState(null);
   const [latestEvidenceId, setLatestEvidenceId] = useState('');
+  const [registeredBy, setRegisteredBy] = useState('');
   const [loadingContext, setLoadingContext] = useState(true);
 
   const [recordsFile, setRecordsFile] = useState(null);
@@ -107,6 +108,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
       setLiveBuildStatus(build?.status || '');
       setAttestationStatus(status || null);
       setLatestEvidenceId(findLatestEvidenceId(auditEvents));
+      setRegisteredBy(auditEvents.find((e) => e.event_type === 'ATTESTATION_KEY_REGISTERED')?.actor_name || '');
     } catch (err) {
       setError(`Failed to load attestation status: ${err.message}`);
     } finally {
@@ -358,7 +360,7 @@ const AttestationEvidenceSection = ({ buildId, buildStatus: buildStatusProp, mod
               id="attestation-verify-passphrase"
               labelText="Attestation Key Passphrase"
               placeholder="Enter attestation key passphrase"
-              helperText="Required when the attestation private key is encrypted. Leading and trailing whitespace is ignored."
+              helperText={`Use the passphrase set when the attestation key was registered${registeredBy ? ` by ${registeredBy}` : ''}. Required when the attestation private key is encrypted. Leading and trailing whitespace is ignored.`}
               value={attestationKeyPassphrase}
               onChange={(e) => setAttestationKeyPassphrase(e.target.value)}
               autoComplete="new-password"

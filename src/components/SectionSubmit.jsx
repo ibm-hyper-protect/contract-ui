@@ -21,6 +21,8 @@ import EnvironmentVolumes from './EnvironmentVolumes';
 import sectionService from '../services/sectionService';
 import buildService from '../services/buildService';
 import RuntimeCertificateSelect from './RuntimeCertificateSelect';
+import secretStoreService from '../services/secretStoreService';
+import { environmentTemplateWithSecrets, secretRuntimeProfile } from '../utils/secretFlow';
 import { BUILD_STATUS, BUILD_STATUS_CONFIG, FILE_SIZE_LIMITS } from '../utils/constants';
 import { formatDate } from '../utils/formatters';
 import LoadingState from './LoadingState';
@@ -83,6 +85,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
   const [yamlError, setYamlError] = useState('');
   const [certificateError, setCertificateError] = useState('');
   const [certSource, setCertSource] = useState('custom');
+  const [secretFlow, setSecretFlow] = useState(null);
   const [runtimeCertificate, setRuntimeCertificate] = useState(null);
   const [draft, setDraft] = useState(null);
   const [draftError, setDraftError] = useState('');
@@ -112,8 +115,10 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
         sectionService.getSection(buildId, personaRole),
         buildService.getBuild(buildId),
       ]);
+      const flow = await secretStoreService.flowForBuild(buildId, build);
       if (request !== contextRequest.current) return;
       setExistingSection(section);
+      setSecretFlow(flow ? { ...flow, required: true } : null);
       setLiveStatus(build?.status || '');
       setLoaded(true);
       return build?.status;
@@ -138,13 +143,17 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
 
   const submitted = existingSection || receipt;
   const correctStage = liveStatus === config.requiredStatus;
-  const locked = !loaded || loading || !!contextError || !correctStage || !!submitted;
+  const secretsPending = secretFlow?.required && !secretFlow.prepared;
+  const locked = !loaded || loading || !!contextError || !correctStage || !!submitted || secretsPending;
   const busy = submitting || reading || loadingTemplate || validating;
   const disabled = locked || busy;
-  const activeCertificate =
-    certSource === 'custom' ? certificate.content : runtimeCertificate?.certificate_pem || '';
-  const certificateName =
-    certSource === 'custom' ? certificate.name : runtimeCertificate?.name || '';
+  const hasSecretTarget = Boolean(secretFlow?.target && secretFlow.requirements?.length);
+  const activeCertificate = hasSecretTarget
+    ? secretFlow.target.runtime_certificate
+    : certSource === 'custom' ? certificate.content : runtimeCertificate?.certificate_pem || '';
+  const certificateName = hasSecretTarget
+    ? `Approved target: ${secretFlow.target.name}`
+    : certSource === 'custom' ? certificate.name : runtimeCertificate?.name || '';
   const hasYaml = !!yaml.content.trim();
   const hasCertificate = hasCertificateContent(activeCertificate);
   const ready = hasYaml && hasCertificate && !locked;
@@ -191,9 +200,12 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
     setLoadingTemplate(true);
     setYamlError('');
     try {
-      const result = await buildService.getContractTemplate(config.templateType);
+      const result = await buildService.getContractTemplate(config.templateType, secretRuntimeProfile(secretFlow));
       if (request !== templateRequest.current) return;
-      const content = typeof result?.content === 'string' ? result.content : '';
+      const template = typeof result?.content === 'string' ? result.content : '';
+      const content = config.templateType === 'env'
+        ? environmentTemplateWithSecrets(template, secretFlow)
+        : template;
       const message = validateSubmissionYaml(content, config.templateType);
       if (message) setYamlError(message);
       else openEditor(content, `${config.fileLabel}-template.yaml`);
@@ -223,7 +235,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
     setError('');
     try {
       const input = prepareContractInput(yaml.content, config.templateType);
-      const result = await buildService.validateContractInput(input, config.templateType);
+      const result = await buildService.validateContractInput(input, config.templateType, secretRuntimeProfile(secretFlow));
       if (!mounted.current) return;
       setValidatedYaml(result.plaintext);
       setReviewOpen(true);
@@ -275,6 +287,8 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
             ? 'Submitted'
             : loading
               ? 'Checking status'
+              : secretsPending
+                ? 'Secrets not ready'
               : ready
                 ? 'Ready to submit'
                 : correctStage
@@ -464,6 +478,11 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                 <p className="submission-form__help">
                   Choose the runtime encryption certificate for the environment where this contract will run.
                 </p>
+                {hasSecretTarget ? (
+                  <InlineNotification kind="info" hideCloseButton lowContrast
+                    title={`Approved target: ${secretFlow.target.name}`}
+                    subtitle="The build uses the runtime encryption certificate pinned in Secret Flow." />
+                ) : <>
                 <RadioButtonGroup
                   name={`cert-source-${personaRole}`}
                   legendText="Certificate source"
@@ -522,6 +541,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
                     onChange={setRuntimeCertificate}
                   />
                 )}
+                </>}
                 {certificateError && (
                   <InlineNotification
                     kind="error"
@@ -537,6 +557,11 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
             <Tile className="submission-form__step submission-form__review">
               <p className="submission-form__eyebrow">Step 3</p>
               <h3>Review and submit</h3>
+              {secretsPending && (
+                <InlineNotification kind="warning" hideCloseButton
+                  title="Prepare runtime secrets first"
+                  subtitle="Complete target review, owner approvals and request preparation under Assignments → Runtime secrets." />
+              )}
               <p className="submission-form__help">
                 The server encrypts your YAML with the selected certificate and stores the encrypted
                 payload.
@@ -545,6 +570,8 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
               <p className="submission-form__readiness" aria-live="polite">
                 {!correctStage
                   ? 'Complete the previous build stage to continue.'
+                  : secretsPending
+                    ? 'Complete Runtime secrets under Assignments before adding this section.'
                   : !hasYaml
                     ? 'Add your YAML to continue.'
                     : !hasCertificate
@@ -626,7 +653,7 @@ function SubmissionForm({ buildId, buildStatus, personaRole, onStatusUpdate }) {
       >
         {submitting && <LoadingState variant="contract-assembly" description={`Submitting ${config.fileLabel}…`} />}
         <p className="submission-form__help">
-          The backend checked this section against the CCRT contract schema. Complete contract inputs
+          The backend checked this section against the {secretRuntimeProfile(secretFlow).toUpperCase()} contract schema. Complete contract inputs
           are checked as a pair. Certificate validity is checked during encryption. Once submitted,
           this section cannot be edited.
         </p>
