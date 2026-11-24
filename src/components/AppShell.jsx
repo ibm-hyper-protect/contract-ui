@@ -37,6 +37,7 @@ import DesktopTitleBar from './DesktopTitleBar';
 import FeatureHelp from './FeatureHelp';
 import { getRoleLabel, sortRolesByPriority } from '../utils/roles';
 import { useThemeStore } from '../store/themeStore';
+import { canUseSecretStore } from '../utils/secretStore';
 
 const AppShell = ({
   activeNav,
@@ -173,6 +174,13 @@ const AppShell = ({
             >
               Build Management
             </SideNavLink>
+
+            {canUseSecretStore(activeRole) && (
+              <SideNavLink renderIcon={Security} isActive={activeNav === 'SECRETS'} href="#secrets"
+                onClick={e => { e.preventDefault(); setActiveNav('SECRETS'); }}>
+                Secret Store
+              </SideNavLink>
+            )}
 
             {/* SideNavMenu groups use SideNavMenuItem for sub-items (no icon) */}
             {hasAdminOperations && (

@@ -504,3 +504,5 @@ Built with:
 - Open source community contributions
 
 Build signing/attestation passphrases ignore leading and trailing whitespace consistently during registration, local key operations, finalization and evidence verification. Internal spaces remain significant. Deploy the matching backend normalization fix before this frontend. Existing keys encrypted with significant surrounding whitespace are not migrated automatically and need replacement through the supported build workflow. Account and encrypted identity-backup passwords are unchanged.
+
+The personal Secret Store integrates with **Build → Assignments → Runtime secrets**. Target profiles refer to the destination machine and protected runtime image. Owner approvals precede Auditor preparation; published UV IDs are available before workload submission. See the Manager [runtime flow documentation](https://github.com/ibm-hyper-protect/contract-manager/blob/main/docs/secret-flow.md) for deployment prerequisites and native versus simulation limits.

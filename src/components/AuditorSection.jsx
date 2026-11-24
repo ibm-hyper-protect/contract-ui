@@ -19,6 +19,7 @@ import ConfirmDialog from './ConfirmDialog';
 import LoadingState from './LoadingState';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import RuntimeCertificateSelect from './RuntimeCertificateSelect';
+import secretStoreService from '../services/secretStoreService';
 import { hasCertificateContent, validateSubmissionFile } from '../utils/submissionForm';
 
 /** Maps build status strings → Carbon Tag type for semantic colour coding */
@@ -68,6 +69,15 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
   
   // Certificate source: 'builtin' | 'custom'
   const [certSource, setCertSource] = useState('custom');
+  const [secretTarget, setSecretTarget] = useState(null);
+  useEffect(() => {
+    let active = true;
+    buildService.getBuild(buildId)
+      .then(build => secretStoreService.flowForBuild(buildId, build))
+      .then(flow => { if (active) setSecretTarget(flow?.requirements?.length ? flow.target : null); })
+      .catch(error => { if (active) setError(error.message || 'Unable to load the deployment target.'); });
+    return () => { active = false; };
+  }, [buildId, buildStatusProp]);
   const [runtimeCertificate, setRuntimeCertificate] = useState(null);
   const [customCertContent, setCustomCertContent] = useState('');
   const [customCertFileName, setCustomCertFileName] = useState('');
@@ -119,7 +129,8 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
   const attestationStepLabel = showSigningCard ? 'Step 2' : 'Step 1';
   
   const getActiveCertContent = () =>
-    certSource === 'custom' ? customCertContent : runtimeCertificate?.certificate_pem || '';
+    secretTarget?.runtime_certificate ||
+    (certSource === 'custom' ? customCertContent : runtimeCertificate?.certificate_pem || '');
 
   const refreshBuildStatus = async () => {
     const build = await buildService.getBuild(buildId);
@@ -440,6 +451,11 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
                 The attestation public key will be encrypted using this certificate before storage.
               </p>
               
+              {secretTarget ? (
+                <InlineNotification kind="info" hideCloseButton
+                  title={`Approved target: ${secretTarget.name}`}
+                  subtitle="Using the runtime encryption certificate pinned in Secret Flow." />
+              ) : <>
               <RadioButtonGroup
                 name="attestation-cert-source"
                 valueSelected={certSource}
@@ -488,6 +504,7 @@ const AuditorSection = ({ buildId, buildStatus: buildStatusProp, onStatusUpdate,
                   {readingCertificate && <p className="workflow-upload-meta" role="status">Reading certificate…</p>}
                 </div>
               )}
+              </>}
             </div>
             {isAttestationRegistered && !attestationKeyID && (
               <p className="workflow-step-copy">

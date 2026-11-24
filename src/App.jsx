@@ -8,6 +8,8 @@ import AdminAnalytics from './views/AdminAnalytics';
 import UserManagement from './views/UserManagement';
 import AccountSettings from './views/AccountSettings';
 import SystemLogs from './views/SystemLogs';
+import SecretStore from './views/SecretStore';
+import { canUseSecretStore } from './utils/secretStore';
 import Login from './views/Login';
 import NotFound from './views/NotFound';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -208,7 +210,8 @@ function App() {
       const blockedAdminPage =
         (activeNav === 'ANALYTICS' && !canAccessAnalytics) ||
         (activeNav === 'USERS' && !canAccessUsers) ||
-        (activeNav === 'LOGS' && !canAccessLogs);
+        (activeNav === 'LOGS' && !canAccessLogs) ||
+        (activeNav === 'SECRETS' && !canUseSecretStore(nextRole));
 
       if (blockedAdminPage) {
         setActiveNav('HOME');
@@ -318,7 +321,8 @@ function App() {
     const blockedAdminPage =
       (activeNav === 'ANALYTICS' && !canAccessAnalytics) ||
       (activeNav === 'USERS' && !canAccessUsers) ||
-      (activeNav === 'LOGS' && !canAccessLogs);
+      (activeNav === 'LOGS' && !canAccessLogs) ||
+      (activeNav === 'SECRETS' && !canUseSecretStore(nextRole));
 
     if (blockedAdminPage) {
       setActiveNav('HOME');
@@ -347,6 +351,7 @@ function App() {
     if (activeNav === 'USERS') return <UserManagement />;
     if (activeNav === 'LOGS') return <SystemLogs />;
     if (activeNav === 'SETTINGS') return <AccountSettings />;
+    if (activeNav === 'SECRETS' && canUseSecretStore(userRole)) return <SecretStore key={`${userEmail}:${userRole}`} userRole={userRole} />;
     
     if (activeNav === 'BUILDS') {
        if (selectedBuildId && selectedBuild) {

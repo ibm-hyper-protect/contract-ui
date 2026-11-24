@@ -174,9 +174,9 @@ class BuildService {
    * @param {'workload'|'env'|''} section
    * @returns {Promise<{valid: boolean, plaintext: string}>}
    */
-  async validateContractInput(plaintext, section) {
+  async validateContractInput(plaintext, section, platform = 'ccrt') {
     try {
-      const response = await apiClient.post('/v2/contract-validate', { plaintext, section });
+      const response = await apiClient.post('/v2/contract-validate', { plaintext, section, platform });
       if (response.data?.valid !== true || typeof response.data.plaintext !== 'string') {
         throw new Error('The backend did not return a valid contract validation result.');
       }
@@ -210,10 +210,11 @@ class BuildService {
    * @param {'workload'|'env'} templateType
    * @returns {Promise<{template_type: string, content: string}>}
    */
-  async getContractTemplate(templateType = 'workload') {
+  async getContractTemplate(templateType = 'workload', platform = 'ccrt') {
     try {
       const response = await apiClient.post('/v2/contract-template', {
-        type: templateType
+        type: templateType,
+        platform
       });
       return response.data;
     } catch (error) {
@@ -224,6 +225,7 @@ class BuildService {
       // Backward-compatible fallback when the running backend has not been
       // restarted with the new /v2/contract-template route yet.
       if (status === 404) {
+        if (platform !== 'ccrt') throw new Error('Update the Manager to load a template for this runtime profile.');
         const normalizedType = String(templateType || 'workload').toLowerCase();
         return {
           template_type: normalizedType,

@@ -6,6 +6,9 @@ const { URL, fileURLToPath } = require('node:url');
 const { spawn } = require('child_process');
 const http = require('http');
 const { randomBytes, timingSafeEqual } = require('node:crypto');
+const devProfile = !app.isPackaged && process.env.CONTRACT_UI_DEV_PROFILE ? path.resolve(process.env.CONTRACT_UI_DEV_PROFILE) : null;
+if (devProfile) app.setPath('userData', path.join(devProfile, 'user-data'));
+const { createSecretImport } = require('./crypto/secretImport');
 const keyManager = require('./crypto/keyManager');
 const encryptor = require('./crypto/encryptor');
 const signer = require('./crypto/signer');
@@ -127,6 +130,7 @@ const firstNonEmptyLine = (value = '') => (
 );
 
 const getConfigDirectoryPath = () => {
+  if (devProfile) return path.join(devProfile, 'config');
   if (process.platform === 'win32') {
     return path.join(app.getPath('appData'), CONFIG_DIR_NAME);
   }
@@ -389,6 +393,27 @@ registerIpcHandler('appConfig:write', async (_event, updates) => {
 // ============================================================================
 
 // Key Generation
+const secretImport = createSecretImport({ directory: () => app.getPath('userData'), getServerUrl: async () => (await readAppConfig()).serverUrl });
+const approvedSecretFiles = new Set();
+registerIpcHandler('crypto:chooseSecretImportFile', async () => {
+  const choice = await dialog.showOpenDialog({ properties: ['openFile'], title: 'Choose a secret value file' });
+  if (choice.canceled) return null;
+  const filePath = choice.filePaths[0];
+  const stat = await fs.stat(filePath);
+  if (!stat.isFile() || stat.size > 65536) throw new Error('Choose a regular file of at most 64 KiB.');
+  approvedSecretFiles.clear();
+  approvedSecretFiles.add(filePath);
+  return { path: filePath, name: path.basename(filePath), size: stat.size };
+});
+registerIpcHandler('crypto:secretImportStatus', (_event, options) => secretImport.status(options));
+registerIpcHandler('crypto:trustSecretImportKey', (_event, options) => secretImport.trust(options));
+registerIpcHandler('crypto:sealSecretImport', async (_event, options) => {
+  if (options?.filePath && !approvedSecretFiles.has(options.filePath)) throw new Error('Choose the secret file again.');
+  const result = await secretImport.seal(options);
+  if (options?.filePath) approvedSecretFiles.delete(options.filePath);
+  return result;
+});
+
 registerIpcHandler('crypto:generateIdentityKeyPair', async () => {
   try {
     return await keyManager.generateIdentityKeyPair();

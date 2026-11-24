@@ -17,6 +17,7 @@ import {
 } from '@carbon/react';
 import { ArrowLeft, ArrowRight, CheckmarkFilled, WarningAlt, Information } from '@carbon/icons-react';
 import BuildAssignments from '../components/BuildAssignments';
+import BuildSecretFlow from '../components/BuildSecretFlow';
 import AuditorSection from '../components/AuditorSection';
 import ContractExport from '../components/ContractExport';
 import SectionSubmit from '../components/SectionSubmit';
@@ -62,6 +63,7 @@ const ROLE_BUILD_TAB_KEYS = {
  */
 const BuildDetails = ({ build, onBack, userRole, advanceBuildState, availableRoles = [], onRoleChange }) => {
   const [selection, setSelection] = useState(null);
+  const [openedTabs, setOpenedTabs] = useState(null);
   const [statusUpdate, setStatusUpdate] = useState(null);
   const tabsContainer = useRef(null);
   const handoffFocus = useRef(null);
@@ -94,7 +96,16 @@ const BuildDetails = ({ build, onBack, userRole, advanceBuildState, availableRol
     }
   }, [userRole, selectedTabKey]);
   const selectedTab = Math.max(0, tabs.findIndex(tab => tab.key === selectedTabKey));
-  const selectTab = (key) => setSelection({ buildId: build.id, role: userRole, key });
+  const tabContext = `${build?.id}:${userRole}`;
+  const mountedTabs = openedTabs?.context === tabContext ? openedTabs.keys : [];
+  const selectTab = (key) => {
+    setSelection({ buildId: build.id, role: userRole, key });
+    // Load a stage on its first visit, then keep its form mounted to preserve drafts.
+    setOpenedTabs(previous => ({
+      context: tabContext,
+      keys: [...new Set([...(previous?.context === tabContext ? previous.keys : []), selectedTabKey, key])]
+    }));
+  };
   const nextTabIndex = tabs.findIndex(tab => tab.key === progress.nextStep?.tab);
   const canOpenNextStep = !progress.isLegacy && progress.nextStep?.role === userRole && nextTabIndex >= 0;
   const nextRole = ROLE_NAMES[progress.nextStep?.role];
@@ -233,14 +244,17 @@ const BuildDetails = ({ build, onBack, userRole, advanceBuildState, availableRol
           <TabPanels>
             {tabs.map(t => (
               <TabPanel key={`${build.id}:${userRole}:${t.key}`}>
-                <div className="build-details-tab-content">
+                {(mountedTabs.includes(t.key) || t.key === selectedTabKey) && <div className="build-details-tab-content">
                   {t.key === 'assignments' && (
+                    <div className="build-details__setup">
                     <BuildAssignments
                       buildId={build.id}
                       buildStatus={currentStatus}
                       userRole={userRole}
                       onStatusUpdate={handleStatusUpdate}
                     />
+                    <BuildSecretFlow buildId={build.id} buildStatus={currentStatus} userRole={userRole} />
+                    </div>
                   )}
                   {t.key === 'signingKey' && (
                     <AuditorSection
@@ -297,7 +311,7 @@ const BuildDetails = ({ build, onBack, userRole, advanceBuildState, availableRol
                   {t.key === 'audit' && (
                     <AuditViewer buildId={build.id} userRole={userRole} />
                   )}
-                </div>
+                </div>}
               </TabPanel>
             ))}
           </TabPanels>
