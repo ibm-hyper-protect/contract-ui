@@ -162,7 +162,8 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
   // Helper function to get user name from ID
   const getUserName = useCallback((userId) => {
     if (!userId) return 'Unknown';
-    const user = users.find(u => u.id === userId || u.user_id === userId);
+    const cleanId = String(userId).toLowerCase();
+    const user = users.find(u => String(u.id || u.user_id || '').toLowerCase() === cleanId);
     return user ? (user.name || user.username || user.email || 'Unknown') : userId;
   }, [users]);
 
@@ -239,7 +240,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
       if (aVal > bVal) return sortInfo.direction === 'ASC' ? 1 : -1;
       return 0;
     });
-  }, [sortInfo]);
+  }, [sortInfo, getUserName]);
 
   // Advanced filter: Apply status filter
   const applyStatusFilter = useCallback((buildList) => {
@@ -286,7 +287,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
       label: creator,
       value: creator
     }));
-  }, [builds]);
+  }, [builds, getUserName]);
 
   // Count active filters
   const activeFilterCount = useMemo(() => {
@@ -785,14 +786,13 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
         />
       ) : (
         <div className="build-management-table-stack">
-          {activeRows.length > 0 && (
-            <DataTable
-              rows={paginatedActiveRows}
-              headers={TABLE_HEADERS}
-              isSortable
-              radio={false}
-              aria-label="Active and in-progress builds table"
-            >
+          <DataTable
+            rows={paginatedActiveRows}
+            headers={TABLE_HEADERS}
+            isSortable
+            radio={false}
+            aria-label="Active and in-progress builds table"
+          >
               {({
                 rows,
                 headers,
@@ -1043,8 +1043,7 @@ const BuildManagement = ({ builds, onSelectBuild, userRole, onBuildCreated, load
                   </TableContainer>
                 );
               }}
-            </DataTable>
-          )}
+          </DataTable>
 
           {completedRows.length > 0 && (
             <DataTable rows={paginatedCompletedRows} headers={TABLE_HEADERS} isSortable>
